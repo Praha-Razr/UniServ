@@ -2,14 +2,22 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
 import { useUser } from '../context/UserContext';
+const { splitCents, splitPaise } = require('../utils/settlementEngine');
 
 export const PaymentBreakdown = ({ totalAmount = 500 }) => {
   const { t } = useUser();
 
-  const workerWage = (totalAmount * 0.8).toFixed(0);
-  const welfare = (totalAmount * 0.1).toFixed(0);
-  const coopOps = (totalAmount * 0.06).toFixed(0);
-  const platform = (totalAmount * 0.04).toFixed(0);
+  const numTotal = Number(totalAmount) || 0;
+  const totalPaise = Math.round(numTotal * 100);
+  // Source-of-truth split in integer paise via settlementEngine
+  const paiseSplit = splitPaise(totalPaise);
+
+  // Formatted integer rupee shares for display ensuring visible shares sum exactly to totalAmount
+  const rupeeSplit = splitCents(numTotal);
+  const workerWage = rupeeSplit.artisan;
+  const welfare = rupeeSplit.welfare;
+  const coopOps = rupeeSplit.reserve;
+  const platform = rupeeSplit.platform;
 
   return (
     <View style={styles.container}>

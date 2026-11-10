@@ -26,7 +26,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web",
-    "serve:web": "npx serve dist"
+    "serve:web": "npx serve dist",
+    "test": "node --test tests/*.test.js"
   },
   "private": true
 }
