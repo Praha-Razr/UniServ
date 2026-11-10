@@ -208,7 +208,7 @@ export const Screen13_PaymentSuccess = ({ navigation }) => {
           <Text style={styles.paidAmountText}>₹{amountPaid}</Text>
           <View style={styles.txnPill}>
             <Text style={styles.txnPillText}>
-              {isScheduledOrAdvance ? `${t('escrowRef') || 'Escrow Ref'}: SBI-MSCS-${bookingId}` : `${t('txnRef') || 'Txn Ref'}: TXN-COOP-${bookingId}`}
+              {isScheduledOrAdvance ? `${t('escrowRef') || 'Escrow Ref'}: UNISERV-ESCROW-${bookingId}` : `${t('txnRef') || 'Txn Ref'}: TXN-COOP-${bookingId}`}
             </Text>
           </View>
         </View>
@@ -227,7 +227,7 @@ export const Screen13_PaymentSuccess = ({ navigation }) => {
             </View>
 
             <Text style={styles.advanceContactDesc}>
-              {t('advanceEscrowDesc') || `Your advance payment of ₹${amountPaid} is securely held in the Govt-monitored SBI MSCS Cooperative Escrow Trust Account. Our cooperative dispatch team and Lead Supervisor will call you 2 hours before the scheduled time on your registered mobile number.`}
+              {t('advanceEscrowDesc') || `Your advance payment of ₹${amountPaid} is securely held in UniServ Pay Escrow (sandbox). Our cooperative dispatch team and Lead Supervisor will call you 2 hours before the scheduled time on your registered mobile number.`}
             </Text>
 
             <View style={styles.contactDetailsBox}>

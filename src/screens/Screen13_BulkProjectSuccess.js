@@ -83,7 +83,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
           <body>
             <div class="header">
               <div>
-                <h1 class="title">Ministry of Cooperation • NCCT Affiliated</h1>
+                <h1 class="title">UniServ Cooperative Gig Platform</h1>
                 <h2 style="font-size: 18px; color: #475569; margin: 4px 0 0;">
                   ${isInstitutional ? 'Institutional Campus Infrastructure Milestone Escrow Agreement' : 'Multi-Artisan Project Milestone Escrow Agreement'}
                 </h2>
@@ -100,7 +100,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
                 <p><strong>Department / Maintenance Cell:</strong> ${departmentTitle}</p>
                 <p><strong>Authorized Signatory Officer:</strong> ${officerTitle}</p>
                 <p><strong>Institutional GSTIN / Tax ID:</strong> ${gstinNumber}</p>
-                <p><strong>Statutory Compliance Standard:</strong> ${complianceTitle}</p>
+                <p><strong>Compliance Standard:</strong> ${complianceTitle}</p>
                 <p><strong>Service SAC Classification:</strong> 9987 / 9985 (Cooperative Labour & Facility Services)</p>
               ` : `
                 <p><strong>Customer Name:</strong> Priya Sharma</p>
@@ -108,9 +108,9 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
               `}
               <p><strong>Primary Service:</strong> ${serviceName} Cooperative Federation</p>
               <p><strong>Assigned Master Contractor:</strong> ${supervisorName}</p>
-              <p><strong>Allocated Artisan Squad:</strong> ${crewSize} Certified Master Artisans (${estimatedDays} Days Deployment)</p>
+              <p><strong>Allocated Artisan Squad:</strong> ${crewSize} Master Artisans (${estimatedDays} Days Deployment)</p>
               <p><strong>Scheduled Target Window:</strong> ${scheduledDate} • ${scheduledTime}</p>
-              <p><strong>Escrow Trust Account:</strong> SBI Multi-State Cooperative Escrow Trust (SBI-MSCS-8839)</p>
+              <p><strong>Escrow Trust Account:</strong> UniServ Pay Escrow (sandbox) (UNISERV-ESCROW-8839)</p>
               ${activeBooking?.trade_name ? `<p><strong>Specialized Trade Discipline:</strong> ${activeBooking.trade_name}</p>` : ''}
               ${activeBooking?.deliverables?.length > 0 ? `
                 <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; margin: 12px 0;">
@@ -188,28 +188,28 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
             role: "Master Contractor & Lead Electrical Supervisor",
             trade: "Industrial Electrical & Substation Audits",
             kyc_id: "AADHAAR-XXXX-XXXX-9481",
-            police_clearance_no: "DL-POLICE-VERIF-2026-88419"
+            coop_verification_no: "DL-COOP-VERIF-2026-88419"
           },
           {
             name: "Ramesh Chandra",
             role: "Master Plumber & Pipeline Engineer",
             trade: "Mega Reservoir & Commercial Hydraulics",
             kyc_id: "AADHAAR-XXXX-XXXX-3829",
-            police_clearance_no: "DL-POLICE-VERIF-2026-55120"
+            coop_verification_no: "DL-COOP-VERIF-2026-55120"
           },
           {
             name: "Mohammad Arif",
             role: "Chief Furniture & Structural Carpenter",
             trade: "Lecture Hall & Hostel Woodwork",
             kyc_id: "AADHAAR-XXXX-XXXX-7164",
-            police_clearance_no: "DL-POLICE-VERIF-2026-99321"
+            coop_verification_no: "DL-COOP-VERIF-2026-99321"
           },
           {
             name: "Sunita Devi",
             role: "Sanitation Guild Supervisor",
             trade: "Hostel & Industrial Kitchen Hygiene",
             kyc_id: "AADHAAR-XXXX-XXXX-4412",
-            police_clearance_no: "DL-POLICE-VERIF-2026-22481"
+            coop_verification_no: "DL-COOP-VERIF-2026-22481"
           }
         ];
 
@@ -221,7 +221,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
             <td><strong>${art.name}</strong><br><span style="font-size: 11px; color: #64748B;">${art.role}</span></td>
             <td>${art.trade}</td>
             <td><code>${art.kyc_id}</code></td>
-            <td><span style="color: #047857; font-weight: bold;">${art.police_clearance_no}</span></td>
+            <td><span style="color: #047857; font-weight: bold;">${art.coop_verification_no || art.verification_no || 'COOP-VERIF-ACTIVE'}</span></td>
             <td><span style="background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; font-size: 11px;">VERIFIED</span></td>
           </tr>
         `).join('');
@@ -251,12 +251,12 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
                 <p style="margin: 2px 0 0; color: #64748B;">Target Deployment Window: ${scheduledDate} • ${scheduledTime}</p>
               </div>
               <div>
-                <span class="badge">POLICE VERIFIED SQUAD</span>
+                <span class="badge">COOPERATIVE KYC &amp; SKILL VERIFIED SQUAD</span>
               </div>
             </div>
 
             <p style="font-size: 12px; color: #334155;">
-              <strong>Campus Security Check-post Protocol:</strong> The following certified cooperative personnel have completed biometric Aadhaar KYC and verified local police clearance. They are authorized to enter with tools, test equipment, and raw materials for the designated contract.
+              <strong>Campus Security Check-post Protocol:</strong> The following cooperative personnel have completed biometric Aadhaar KYC and cooperative credential verification. They are authorized to enter with tools, test equipment, and raw materials for the designated contract.
             </p>
 
             <table class="table">
@@ -264,8 +264,8 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
                 <th>#</th>
                 <th>Artisan Name & Role</th>
                 <th>Trade Designation</th>
-                <th>Government KYC ID Token</th>
-                <th>Police Clearance Certificate No.</th>
+                <th>Cooperative KYC Token</th>
+                <th>Verification Certificate No.</th>
                 <th>Status</th>
               </tr>
               ${rosterRows}
@@ -311,7 +311,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
         console.warn('Gate pass export error:', err);
       }
     }
-    Alert.alert('Security Gate Pass Generated', `Official police-verified artisan gate pass for ${institutionTitle} is ready for campus main gate security.`);
+    Alert.alert('Security Gate Pass Generated', `Official Cooperative KYC & Skill Verified artisan gate pass for ${institutionTitle} is ready for campus main gate security.`);
   };
 
   return (
@@ -332,7 +332,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
           <Text style={styles.paidAmountText}>₹{advanceAmount.toLocaleString()}</Text>
           <View style={styles.escrowStatusPill}>
             <Ionicons name="lock-closed" size={12} color={colors.successDark} />
-            <Text style={styles.escrowStatusPillText}>{t('heldInGovtEscrow') || 'Held in Govt SBI MSCS Escrow Account'}</Text>
+            <Text style={styles.escrowStatusPillText}>{t('heldInGovtEscrow') || 'Held in UniServ Pay Escrow (sandbox) Account'}</Text>
           </View>
           <Text style={styles.bookingRefText}>{t('contractId') || 'Contract ID'}: COOP-PROJ-{bookingId}</Text>
         </View>
@@ -504,7 +504,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
                 </View>
                 <Text style={styles.milestoneSub}>
                   {isMidPaid
-                    ? 'Funded in SBI Escrow. Released automatically upon physical progress check.'
+                    ? 'Funded in UniServ Pay Escrow (sandbox). Released automatically upon physical progress check.'
                     : (t('milestone2Scheduled') || 'Scheduled for release after physical mid-way audit by Ward Coordinator.')}
                 </Text>
               </View>
@@ -528,7 +528,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
                 </View>
                 <Text style={styles.milestoneSub}>
                   {isFinalPaid
-                    ? 'Funded in SBI Escrow. Released upon customer completion sign-off.'
+                    ? 'Funded in UniServ Pay Escrow (sandbox). Released upon customer completion sign-off.'
                     : (t('milestone3Released') || 'Released only upon customer completion OTP & 7-day warranty activation.')}
                 </Text>
               </View>
@@ -546,7 +546,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
               </Text>
             </View>
             <Text style={{ fontSize: 12, color: '#78350F', marginTop: 4, lineHeight: 18 }}>
-              Milestone 1 Advance (₹{paidAmount.toLocaleString()}) has been funded in SBI Escrow. You can deposit the remaining balance to allow seamless milestone audit disbursements.
+              Milestone 1 Advance (₹{paidAmount.toLocaleString()}) has been funded in UniServ Pay Escrow (sandbox). You can deposit the remaining balance to allow seamless milestone audit disbursements.
             </Text>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <TouchableOpacity
@@ -581,7 +581,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
               </Text>
             </View>
             <Text style={{ fontSize: 12, color: colors.textPrimary, marginTop: 4, lineHeight: 18 }}>
-              Total project sum of ₹{totalProjectCost.toLocaleString()} is safely locked in the Central SBI MSCS Escrow Trust. Once satisfied with the service, sign-off to complete handover and rate the artisan squad.
+              Total project sum of ₹{totalProjectCost.toLocaleString()} is safely locked in UniServ Pay Escrow (sandbox). Once satisfied with the service, sign-off to complete handover and rate the artisan squad.
             </Text>
             <TouchableOpacity
               style={{ backgroundColor: colors.successDark, paddingVertical: 13, borderRadius: 12, alignItems: 'center', marginTop: 10, flexDirection: 'row', justifyContent: 'center' }}
@@ -678,7 +678,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
             </View>
             <View style={styles.chatBubble}>
               <Text style={styles.chatMessage}>
-                "Namaste! Your project advance has been received in SBI Escrow. Our squad and material van are scheduled to arrive at your site on {scheduledDate} at {scheduledTime}."
+                "Namaste! Your project advance has been received in UniServ Pay Escrow (sandbox). Our squad and material van are scheduled to arrive at your site on {scheduledDate} at {scheduledTime}."
               </Text>
               <Text style={styles.chatTime}>{t('justNow') || 'Just now'}</Text>
             </View>

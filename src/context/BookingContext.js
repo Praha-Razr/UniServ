@@ -608,7 +608,7 @@ export const BookingProvider = ({ children }) => {
         ...prev,
         payment_option: isFull ? 'full' : (prev.payment_option || 'advance'),
         payment_status: isFull ? 'full_paid' : 'advance_paid',
-        payment_method: method || prev.payment_method || 'SBI MSCS Escrow Instant UPI',
+        payment_method: method || prev.payment_method || 'UniServ Pay Escrow (sandbox)',
         paid_amount: newPaidAmount,
         remaining_amount: newRemaining,
         milestone_stage: isFull ? 3 : (m2Paid ? 2 : 1),

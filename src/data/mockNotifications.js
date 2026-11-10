@@ -18,7 +18,7 @@ export const mockNotifications = [
   {
     id: 'n3',
     title: 'Cooperative Verification Passed',
-    message: 'All workers assigned in your locality have completed annual safety & police verification for 2026.',
+    message: 'All workers assigned in your locality have completed annual safety & Cooperative KYC & Skill Verified credentials for 2026.',
     time: 'Yesterday',
     read: true,
     type: 'security'

@@ -202,9 +202,9 @@ export const NOTIFICATIONS_TRANSLATIONS = [
       hi: 'सहकारी सत्यापन उत्तीर्ण'
     },
     message: {
-      en: 'All workers assigned in your locality have completed annual safety & police verification for 2026.',
-      ta: 'உங்கள் பகுதியில் உள்ள அனைத்து தொழிலாளர்களும் 2026-ஆம் ஆண்டிற்கான பாதுகாப்பு & போலீஸ் சரிபார்ப்பை முடித்துள்ளனர்.',
-      hi: 'आपके क्षेत्र में नियुक्त सभी कारीगरों ने 2026 के लिए वार्षिक सुरक्षा एवं पुलिस सत्यापन पूरा कर लिया है।'
+      en: 'All workers assigned in your locality have completed annual safety & Cooperative KYC & Skill Verified credentials for 2026.',
+      ta: 'உங்கள் பகுதியில் உள்ள அனைத்து தொழிலாளர்களும் 2026-ஆம் ஆண்டிற்கான பாதுகாப்பு & கூட்டுறவு திறன் சரிபார்ப்பை முடித்துள்ளனர்.',
+      hi: 'आपके क्षेत्र में नियुक्त सभी कारीगरों ने 2026 के लिए वार्षिक सुरक्षा एवं सहकारी कौशल सत्यापन पूरा कर लिया है।'
     },
     time: {
       en: 'Yesterday',

@@ -464,7 +464,7 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
           <View style={styles.bulkEscrowLiveCard}>
             <View style={styles.bulkEscrowLiveHeader}>
               <Ionicons name="shield-checkmark" size={18} color={colors.primary} />
-              <Text style={styles.bulkEscrowLiveTitle}>{t('milestoneTrackerTitle') || 'GOVT SBI MSCS ESCROW MILESTONE TRACKER'}</Text>
+              <Text style={styles.bulkEscrowLiveTitle}>{t('milestoneTrackerTitle') || 'UNISERV PAY ESCROW (SANDBOX) MILESTONE TRACKER'}</Text>
             </View>
 
             <Text style={styles.bulkEscrowLiveSub}>

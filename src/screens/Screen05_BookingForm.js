@@ -408,7 +408,7 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
           crewSize = 3; days = 3;
           minCost = isLabourOnly ? 8500 : isPremium ? 32000 : 18000;
           maxCost = isLabourOnly ? 11500 : isPremium ? 42000 : 24000;
-          desc = '2 BHK Complete Rewiring: Dedicated AC lines, Havells/Polycab FRLS cables & 6-Way DB.';
+          desc = '2 BHK Complete Rewiring: Dedicated AC lines, flame-retardant (FRLS) copper wiring & 6-Way DB.';
         } else if (selectedScaleIndex === 2) {
           crewSize = 5; days = 4;
           minCost = isLabourOnly ? 14000 : isPremium ? 52000 : 30000;
@@ -920,7 +920,7 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
                 </View>
 
                 <Text style={styles.directBulkDesc}>
-                  Directly dispatch Master Contractor &amp; {bulkEstimation.crewSize} Artisans for {bulkEstimation.days} days by locking Milestone 1 Advance into Govt SBI MSCS Escrow.
+                  Directly dispatch Master Contractor &amp; {bulkEstimation.crewSize} Artisans for {bulkEstimation.days} days by locking Milestone 1 Advance into UniServ Pay Escrow (sandbox).
                 </Text>
 
                 <TouchableOpacity

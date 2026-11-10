@@ -300,11 +300,11 @@ export const Screen06_WorkerMatch = ({ route, navigation }) => {
               <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
               <View style={styles.guaranteeTextCol}>
                 <Text style={styles.guaranteeTitle}>
-                  {activeBooking?.is_bulk_project ? 'Govt SBI MSCS Escrow Protection' : 'Price & Quality Protection'}
+                  {activeBooking?.is_bulk_project ? 'UniServ Pay Escrow (sandbox) Protection' : 'Price & Quality Protection'}
                 </Text>
                 <Text style={styles.guaranteeSub}>
                   {activeBooking?.is_bulk_project
-                    ? '100% Advance is held in Govt SBI MSCS Cooperative Trust Escrow and disbursed only in verified stages.'
+                    ? '100% Advance is held in UniServ Pay Escrow (sandbox) and disbursed only in verified stages.'
                     : 'No payment is processed until work is completed and verified with your OTP.'}
                 </Text>
               </View>

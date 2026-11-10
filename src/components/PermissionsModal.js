@@ -67,11 +67,12 @@ export const PermissionsModal = ({
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <View style={styles.govTagRow}>
-                <Text style={styles.govTag}>{t('ministryCooperationTag') || 'MINISTRY OF COOPERATION • NCCT'}</Text>
+                <Text style={styles.govTag}>UniServ Cooperative Gig Platform</Text>
+                <Text style={styles.govSubTag}>Independent Prototype • Sandbox Payments Only</Text>
               </View>
               <Text style={styles.title}>{t('hardwarePermissionsTitle') || 'Service & Hardware Permissions'}</Text>
               <Text style={styles.subtitle}>
-                {t('hardwarePermissionsSub') || 'UniServ requires standard device access to deliver certified cooperative doorstep assistance.'}
+                {t('hardwarePermissionsSub') || 'UniServ requires standard device access to deliver cooperative doorstep assistance.'}
               </Text>
             </View>
           </View>
@@ -169,6 +170,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.primary,
     letterSpacing: 0.5
+  },
+  govSubTag: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 0.3,
+    marginTop: 1
   },
   title: {
     fontSize: 16,

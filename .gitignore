@@ -31,7 +31,17 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
+
+# server & build
+server/node_modules
+server/data/
+
+# internal docs
+docs/SIH_INVENTORY_REPORT.md
 
 # typescript
 *.tsbuildinfo

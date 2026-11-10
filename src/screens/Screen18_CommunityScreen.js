@@ -275,17 +275,17 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
         });
 
         const proposalHtml = '<!DOCTYPE html><html><head><title>UniServ Cooperative Infrastructure Proposal - ' + req.id + '</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #1E293B; line-height: 1.5; } .header { border-bottom: 3px solid #1E3A8A; padding-bottom: 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; } .title { font-size: 22px; font-weight: 800; color: #1E3A8A; margin: 0; } .sub { font-size: 13px; color: #64748B; margin: 3px 0 0; } .badge { background: #ECFDF5; color: #047857; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid #059669; } .table { width: 100%; border-collapse: collapse; margin: 16px 0; } .table th, .table td { border: 1px solid #E2E8F0; padding: 9px 12px; text-align: left; font-size: 12px; } .table th { background: #F8FAFC; color: #1E3A8A; font-weight: 700; } .section-title { font-size: 15px; font-weight: 800; color: #1E3A8A; margin: 22px 0 8px; } .footer { margin-top: 36px; font-size: 11px; color: #64748B; border-top: 1px dashed #CBD5E1; padding-top: 14px; text-align: center; } .box { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px; margin-bottom: 18px; font-size: 12px; line-height: 1.7; }</style></head><body>' +
-          '<div class="header"><div><h1 class="title">Ministry of Cooperation • NCCT Affiliated</h1><h2 style="font-size: 16px; color: #475569; margin: 3px 0 0;">' + selectedCoop.name + '</h2><p class="sub">Reg No: ' + selectedCoop.registration_no + ' • Specialized Infrastructure Ward Desk</p><p class="sub">Ref: COOP-PROP-' + req.id + '-2026</p></div><div><span class="badge">OFFICIAL COOPERATIVE PROPOSAL</span></div></div>' +
+          '<div class="header"><div><h1 class="title">UniServ Cooperative Gig Platform</h1><h2 style="font-size: 16px; color: #475569; margin: 3px 0 0;">' + selectedCoop.name + '</h2><p class="sub">Reg No: ' + selectedCoop.registration_no + ' • Specialized Infrastructure Ward Desk</p><p class="sub">Ref: COOP-PROP-' + req.id + '-2026</p></div><div><span class="badge">OFFICIAL COOPERATIVE PROPOSAL</span></div></div>' +
           '<div class="box"><p><strong>To:</strong> ' + (req.officer_name || 'The Authorized Estate / RWA Officer') + (req.department_office ? (', ' + req.department_office) : '') + '</p><p><strong>Entity / Institution:</strong> ' + (req.institution_name || req.society_name) + '</p><p><strong>Specialized Trade Scope:</strong> ' + tradeTitle + ' (' + req.service_title + ')</p><p><strong>Target Deployment Window:</strong> ' + req.target_date + '</p>' + (req.gstin ? ('<p><strong>Client GSTIN:</strong> ' + req.gstin + '</p>') : '') + paramsHtml + '</div>' +
           '<div class="section-title">1. Quotation & Squad Allocation Summary</div>' +
-          '<table class="table"><tr><th>Trade Classification</th><th>Artisan Squad</th><th>Duration</th><th>Estimated Value Bracket</th><th>Statutory Standards</th></tr><tr><td>' + tradeTitle + '</td><td>' + req.crew_size + ' Certified Master Artisans</td><td>' + req.days + ' Deployment Days</td><td><strong>₹' + req.estimated_cost_min.toLocaleString() + ' – ₹' + req.estimated_cost_max.toLocaleString() + '</strong></td><td>' + complianceObj.code + '</td></tr></table>' +
+          '<table class="table"><tr><th>Trade Classification</th><th>Artisan Squad</th><th>Duration</th><th>Estimated Value Bracket</th><th>Technical Standards</th></tr><tr><td>' + tradeTitle + '</td><td>' + req.crew_size + ' Master Artisans</td><td>' + req.days + ' Deployment Days</td><td><strong>₹' + req.estimated_cost_min.toLocaleString() + ' – ₹' + req.estimated_cost_max.toLocaleString() + '</strong></td><td>' + complianceObj.code + '</td></tr></table>' +
           '<div class="section-title">2. Contract Scope & Itemized Deliverables</div>' +
           '<div class="box"><ul style="margin: 0; padding-left: 20px;">' + deliverablesHtml + '</ul></div>' +
           (machineryRows ? ('<div class="section-title">3. Specialized Heavy Machinery & Equipment Deployed</div><table class="table"><tr><th>#</th><th>Machine / System Name</th><th>Engineering Specification</th><th>Safety Grade</th></tr>' + machineryRows + '</table>') : '') +
           '<div class="section-title">4. 3-Stage Escrow Milestone Schedule</div>' +
-          '<table class="table"><tr><th>Milestone Stage</th><th>Disbursement Condition</th><th>Escrow Allocation (40% / 35% / 25%)</th></tr><tr><td>Milestone 1: Mobilization & Equipment Deployment</td><td>Deposited into SBI MSCS Escrow on work order award</td><td>₹' + bulkMath.advanceAmount.toLocaleString() + '</td></tr><tr><td>Milestone 2: Mid-Stage Quality Audit Sign-off</td><td>Ward Coordinator & Estate Officer physical verification</td><td>₹' + bulkMath.midMilestone.toLocaleString() + '</td></tr><tr><td>Milestone 3: Final Handover & Warranty Activation</td><td>Authorized Officer OTP handshake & lab report delivery</td><td>₹' + bulkMath.finalMilestone.toLocaleString() + '</td></tr></table>' +
-          '<div class="box" style="background: #EFF6FF; border-color: #BFDBFE;"><p style="margin: 0; color: #1E3A8A; font-weight: 700;">🏛️ Statutory Compliance & Lab Accreditation Notice:</p><p style="margin: 4px 0 0; color: #1E293B;">This project adheres strictly to <strong>' + complianceObj.code + '</strong>. Handover includes official <em>' + complianceObj.audit_report + '</em> issued by <em>' + complianceObj.issuing_body + '</em>.</p></div>' +
-          '<div class="footer"><p>100% Transparent Cooperative Labor Platform • 80% Direct Artisan Wage Allocation • Central MSCS Trust Protected</p><p>🛡️ Active Seva Suraksha Workmanship & Statutory Defect Warranty</p></div><script>window.print();</script></body></html>';
+          '<table class="table"><tr><th>Milestone Stage</th><th>Disbursement Condition</th><th>Escrow Allocation (40% / 35% / 25%)</th></tr><tr><td>Milestone 1: Mobilization & Equipment Deployment</td><td>Deposited into UniServ Pay Escrow (sandbox) on work order award</td><td>₹' + bulkMath.advanceAmount.toLocaleString() + '</td></tr><tr><td>Milestone 2: Mid-Stage Quality Audit Sign-off</td><td>Ward Coordinator & Estate Officer physical verification</td><td>₹' + bulkMath.midMilestone.toLocaleString() + '</td></tr><tr><td>Milestone 3: Final Handover & Warranty Activation</td><td>Authorized Officer OTP handshake & report delivery</td><td>₹' + bulkMath.finalMilestone.toLocaleString() + '</td></tr></table>' +
+          '<div class="box" style="background: #EFF6FF; border-color: #BFDBFE;"><p style="margin: 0; color: #1E3A8A; font-weight: 700;">🏛️ Compliance & Technical Standard Notice:</p><p style="margin: 4px 0 0; color: #1E293B;">This project adheres to <strong>' + complianceObj.code + '</strong>. Handover includes official <em>' + complianceObj.audit_report + '</em> issued by <em>' + complianceObj.issuing_body + '</em>.</p></div>' +
+          '<div class="footer"><p>100% Transparent Cooperative Labor Platform • 80% Direct Artisan Wage Allocation • Central Escrow Protected (sandbox)</p><p>🛡️ Active Seva Suraksha Workmanship & Defect Warranty</p></div><script>window.print();</script></body></html>';
 
         const blob = new Blob([proposalHtml], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
@@ -312,7 +312,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
         squad.forEach((art, idx) => {
           // Adapt squad role to trade if available
           const roleTitle = activeConfig?.squad_composition?.[idx] || art.role;
-          rosterRows += '<tr><td>' + (idx + 1) + '</td><td><strong>' + art.name + '</strong><br><span style="font-size: 11px; color: #64748B;">' + roleTitle + '</span></td><td>' + tradeTitle + '</td><td><code>' + art.kyc_id + '</code></td><td><span style="color: #047857; font-weight: bold;">' + art.police_clearance_no + '</span></td><td><span style="background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; font-size: 11px;">VERIFIED</span></td></tr>';
+          rosterRows += '<tr><td>' + (idx + 1) + '</td><td><strong>' + art.name + '</strong><br><span style="font-size: 11px; color: #64748B;">' + roleTitle + '</span></td><td>' + tradeTitle + '</td><td><code>' + art.kyc_id + '</code></td><td><span style="color: #047857; font-weight: bold;">' + (art.coop_verification_no || art.verification_no || 'COOP-VERIF-ACTIVE') + '</span></td><td><span style="background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; font-size: 11px;">VERIFIED</span></td></tr>';
         });
 
         // Machinery gate entry permits
@@ -322,11 +322,11 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
         });
 
         const gatePassHtml = '<!DOCTYPE html><html><head><title>Campus Security Entry Gate Pass - ' + clientTitle + '</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #1E293B; line-height: 1.5; } .header { border-bottom: 3px solid #1E3A8A; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; } .title { font-size: 20px; font-weight: 800; color: #1E3A8A; margin: 0; } .badge { background: #FEF3C7; color: #B45309; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid #D97706; } .table { width: 100%; border-collapse: collapse; margin: 16px 0; } .table th, .table td { border: 1px solid #E2E8F0; padding: 8px 10px; text-align: left; font-size: 11px; } .table th { background: #F8FAFC; color: #1E3A8A; font-weight: 700; } .footer { margin-top: 30px; font-size: 11px; color: #64748B; border-top: 1px dashed #CBD5E1; padding-top: 12px; }</style></head><body>' +
-          '<div class="header"><div><h1 class="title">CAMPUS SECURITY ENTRY GATE PASS</h1><p style="margin: 4px 0 0; color: #475569;"><strong>Authorized Client / Campus:</strong> ' + clientTitle + '</p><p style="margin: 2px 0 0; color: #64748B;">Issuing Federation: ' + selectedCoop.name + ' (Reg: ' + selectedCoop.registration_no + ')</p><p style="margin: 2px 0 0; color: #64748B;">Gate Pass ID: GP-' + Math.floor(10000 + Math.random() * 90000) + ' • Scheduled Window: ' + targetDate + '</p></div><div><span class="badge">POLICE VERIFIED SQUAD</span></div></div>' +
-          '<p style="font-size: 12px; color: #334155;"><strong>Campus Security Protocol:</strong> The certified artisan personnel and heavy equipment listed below are cleared for security checkpoint entry. All personnel carry Government Photo KYC IDs, verified background certificates, and formal trade equipment badges.</p>' +
-          '<table class="table"><tr><th>#</th><th>Artisan Name & Assigned Trade Role</th><th>Trade Specialization</th><th>Government KYC Token</th><th>Police Clearance Certificate</th><th>Status</th></tr>' + rosterRows + '</table>' +
+          '<div class="header"><div><h1 class="title">CAMPUS SECURITY ENTRY GATE PASS</h1><p style="margin: 4px 0 0; color: #475569;"><strong>Authorized Client / Campus:</strong> ' + clientTitle + '</p><p style="margin: 2px 0 0; color: #64748B;">Issuing Federation: ' + selectedCoop.name + ' (Reg: ' + selectedCoop.registration_no + ')</p><p style="margin: 2px 0 0; color: #64748B;">Gate Pass ID: GP-' + Math.floor(10000 + Math.random() * 90000) + ' • Scheduled Window: ' + targetDate + '</p></div><div><span class="badge">COOPERATIVE KYC &amp; SKILL VERIFIED SQUAD</span></div></div>' +
+          '<p style="font-size: 12px; color: #334155;"><strong>Campus Security Protocol:</strong> The artisan personnel and equipment listed below are cleared for security checkpoint entry. All personnel carry Photo KYC IDs, verified background certificates, and formal trade equipment badges.</p>' +
+          '<table class="table"><tr><th>#</th><th>Artisan Name & Assigned Trade Role</th><th>Trade Specialization</th><th>Cooperative KYC Token</th><th>Verification Certificate</th><th>Status</th></tr>' + rosterRows + '</table>' +
           (toolRows ? ('<h3 style="font-size:14px;color:#1E3A8A;margin-top:18px;">Authorized Heavy Machinery & Specialized Tools</h3><table class="table"><tr><th>#</th><th>Equipment Name</th><th>Technical Specification</th><th>Safety Rating</th><th>Gate Clearance</th></tr>' + toolRows + '</table>') : '') +
-          '<div class="footer"><p>Certified by: <strong>' + selectedCoop.head_name + '</strong>, Federation President & Ward Coordinator (' + selectedCoop.phone + ')</p><p>For campus security gate verification queries, contact National Cooperative Desk: <strong>1800-202-COOP</strong></p></div><script>window.print();</script></body></html>';
+          '<div class="footer"><p>Validated by: <strong>' + selectedCoop.head_name + '</strong>, Federation Coordinator (' + selectedCoop.phone + ')</p><p>For campus security gate verification queries, contact National Cooperative Desk: <strong>1800-202-COOP</strong></p></div><script>window.print();</script></body></html>';
 
         const blob = new Blob([gatePassHtml], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
@@ -338,7 +338,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
         console.warn('Gate pass export error:', e);
       }
     }
-    Alert.alert('Security Gate Pass Generated', 'Official police-verified artisan gate pass for ' + clientTitle + ' is ready.');
+    Alert.alert('Security Gate Pass Generated', 'Official Cooperative KYC & Skill Verified artisan gate pass for ' + clientTitle + ' is ready.');
   };
 
   return (
@@ -453,8 +453,8 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
                   ? (t('institutionalHubTag') || 'COLLEGES, UNIVERSITIES & CAMPUS BULK HUB')
                   : (t('communityHubTag') || 'RWA & HOUSING SOCIETY BULK HUB')}
               </Text>
-              <View style={styles.ncctPill}>
-                <Text style={styles.ncctPillText}>NCCT COOPERATIVE</Text>
+              <View style={styles.coopStatusPill}>
+                <Text style={styles.coopStatusPillText}>COOP VERIFIED</Text>
               </View>
             </View>
             <Text style={styles.heroTitle}>
@@ -837,7 +837,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
                       ₹{bulkMath.minCost.toLocaleString()} – ₹{bulkMath.maxCost.toLocaleString()}
                     </Text>
                     <Text style={styles.calcAdvanceHint}>
-                      Advance Milestone 1 (40%): ₹{bulkMath.advanceAmount.toLocaleString()} (Held in SBI Escrow)
+                      Advance Milestone 1 (40%): ₹{bulkMath.advanceAmount.toLocaleString()} (Held in UniServ Pay Escrow (sandbox))
                     </Text>
                     <Text style={styles.calcMilestoneBreakdown}>
                       Mid Milestone 2 (35%): ₹{bulkMath.midMilestone.toLocaleString()} • Final Handover (25%): ₹{bulkMath.finalMilestone.toLocaleString()}
@@ -951,7 +951,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
                     <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
                     <View style={{ marginLeft: 8 }}>
                       <Text style={styles.directEscrowBtnText}>Book with Milestone Escrow Deposit</Text>
-                      <Text style={styles.directEscrowSubText}>Advance ₹{bulkMath.advanceAmount.toLocaleString()} via SBI Escrow</Text>
+                      <Text style={styles.directEscrowSubText}>Advance ₹{bulkMath.advanceAmount.toLocaleString()} via UniServ Pay Escrow (sandbox)</Text>
                     </View>
                   </TouchableOpacity>
 
@@ -1044,7 +1044,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
                 <View style={{ flex: 1, marginRight: 10 }}>
                   <View style={styles.gatePassPill}>
                     <Ionicons name="shield-checkmark" size={12} color={colors.successDark} />
-                    <Text style={styles.gatePassPillText}>POLICE-VERIFIED ARTISAN SQUAD</Text>
+                    <Text style={styles.gatePassPillText}>COOPERATIVE KYC &amp; SKILL VERIFIED ARTISAN SQUAD</Text>
                   </View>
                   <Text style={styles.modalTitle}>Campus Security Entry Gate Pass</Text>
                   <Text style={styles.modalSub}>
@@ -1076,9 +1076,9 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
                         </View>
                         <Text style={styles.squadRole}>{roleTitle}</Text>
                         <Text style={styles.squadTrade}>Trade: {activeConfig?.trade_name || artisan.trade}</Text>
-                        <View style={styles.policeRow}>
+                        <View style={styles.verificationRow}>
                           <Ionicons name="document-lock" size={12} color={colors.textSecondary} />
-                          <Text style={styles.policeText}>{artisan.police_clearance_no}</Text>
+                          <Text style={styles.verificationText}>{artisan.coop_verification_no || artisan.verification_no || 'COOP-VERIF-ACTIVE'}</Text>
                         </View>
                       </View>
                     </View>
@@ -1221,13 +1221,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     letterSpacing: 0.5
   },
-  ncctPill: {
+  coopStatusPill: {
     backgroundColor: colors.primary,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4
   },
-  ncctPillText: {
+  coopStatusPillText: {
     fontSize: 8,
     fontWeight: '800',
     color: '#FFFFFF'
@@ -2083,13 +2083,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.textSecondary
   },
-  policeRow: {
+  verificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     marginTop: 2
   },
-  policeText: {
+  verificationText: {
     fontSize: 9,
     color: colors.textMuted
   },

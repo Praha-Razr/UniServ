@@ -55,10 +55,10 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
 
   const handlePayEscrow = () => {
     setIsProcessing(true);
-    let methodTitle = 'SBI MSCS Direct NEFT/RTGS Transfer';
-    if (selectedMethod === 'upi') methodTitle = 'SBI MSCS Escrow Instant UPI';
-    else if (selectedMethod === 'card') methodTitle = 'SBI MSCS Escrow Corporate Card';
-    else if (selectedMethod === 'netbanking') methodTitle = 'SBI MSCS Escrow NetBanking';
+    let methodTitle = 'UniServ Pay Escrow Direct Bank Transfer';
+    if (selectedMethod === 'upi') methodTitle = 'PayPal Sandbox (USD) / Cooperative Wallet';
+    else if (selectedMethod === 'card') methodTitle = 'UniServ Pay Escrow Corporate Card';
+    else if (selectedMethod === 'netbanking') methodTitle = 'UniServ Pay Escrow NetBanking';
 
     const isFullOption = paymentOption === 'full' || paymentOption === 'remaining_full' || amountToPay >= remainingAmount;
 
@@ -102,7 +102,7 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
               <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
                 <View style={styles.escrowBadge}>
                   <Ionicons name="shield-checkmark" size={12} color={colors.successDark} />
-                  <Text style={styles.escrowBadgeText}>{t('sbiMscsEscrowProtected') || 'SBI MSCS ESCROW PROTECTED'}</Text>
+                  <Text style={styles.escrowBadgeText}>{t('escrowProtected') || 'UNISERV PAY ESCROW (SANDBOX) PROTECTED'}</Text>
                 </View>
                 {activeBooking?.statutory_compliance && (
                   <View style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: colors.primaryLight }}>
@@ -177,7 +177,7 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
               </Text>
             </View>
             <Text style={{ fontSize: 13, color: colors.textPrimary, lineHeight: 19 }}>
-              Total Project Escrow of <Text style={{ fontWeight: '800' }}>₹{totalProjectCost.toLocaleString()}</Text> is fully deposited into the Central SBI MSCS Escrow Trust. All milestone disbursements are pre-funded.
+              Total Project Escrow of <Text style={{ fontWeight: '800' }}>₹{totalProjectCost.toLocaleString()}</Text> is fully deposited into the Central UniServ Pay Escrow (sandbox). All milestone disbursements are pre-funded.
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
               <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: colors.successDark }}>
@@ -289,7 +289,7 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
                   <Text style={styles.choiceOptionTitle}>{t('fullProjectEscrow') || 'Full Project Escrow (100%)'}</Text>
                 </View>
                 <Text style={styles.choiceOptionSub}>
-                  {t('fullEscrowSub') || 'Total amount held in SBI Escrow. Released automatically as each stage is verified.'}
+                  {t('fullEscrowSub') || 'Total amount held in UniServ Pay Escrow (sandbox). Released automatically as each stage is verified.'}
                 </Text>
               </View>
               <Text style={styles.choiceOptionAmount}>₹{totalProjectCost.toLocaleString()}</Text>
@@ -323,8 +323,8 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
                 </View>
                 <Text style={styles.milestoneDetail}>
                   {(isAdvanceAlreadyPaid || isFullyPaid)
-                    ? 'Deposited & secured in SBI Escrow. Wholesale material reserve unlocked.'
-                    : (t('milestone1Payable') || 'Payable now into SBI Escrow. Unlocks wholesale material sourcing and crew blocking.')}
+                    ? 'Deposited & secured in UniServ Pay Escrow (sandbox). Wholesale material reserve unlocked.'
+                    : (t('milestone1Payable') || 'Payable now into UniServ Pay Escrow (sandbox). Unlocks wholesale material sourcing and crew blocking.')}
                 </Text>
               </View>
             </View>
@@ -347,7 +347,7 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
                 </View>
                 <Text style={styles.milestoneDetail}>
                   {isFullyPaid
-                    ? 'Pre-funded in SBI Escrow. Released automatically upon physical progress check.'
+                    ? 'Pre-funded in UniServ Pay Escrow (sandbox). Released automatically upon physical progress check.'
                     : (t('milestone2Disbursed') || 'Disbursed only after physical progress check by Ward Coordinator.')}
                 </Text>
               </View>
@@ -371,7 +371,7 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
                 </View>
                 <Text style={styles.milestoneDetail}>
                   {isFullyPaid
-                    ? 'Pre-funded in SBI Escrow. Released strictly after customer completion OTP handshake.'
+                    ? 'Pre-funded in UniServ Pay Escrow (sandbox). Released strictly after customer completion OTP handshake.'
                     : (t('milestone3Released') || 'Released strictly after customer completion OTP handshake & 7-day warranty activation.')}
                 </Text>
               </View>
@@ -379,18 +379,18 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Govt SBI MSCS Escrow Account Trust Card */}
+        {/* UniServ Pay Escrow (sandbox) Account Trust Card */}
         <View style={styles.trustCard}>
           <View style={styles.trustHeader}>
             <Ionicons name="lock-closed" size={16} color={colors.successDark} />
-            <Text style={styles.trustTitle}>{t('govtEscrowAccountTitle') || 'GOVERNMENT SBI MSCS ESCROW TRUST ACCOUNT'}</Text>
+            <Text style={styles.trustTitle}>{t('govtEscrowAccountTitle') || 'UNISERV PAY ESCROW (SANDBOX) TRUST ACCOUNT'}</Text>
           </View>
           <Text style={styles.trustDesc}>
-            {t('govtEscrowDesc') || 'Funds are deposited into the Central Multi-State Cooperative Society (MSCS) Trust Escrow Account at State Bank of India (SBI). Artisans are compensated strictly upon verified milestone sign-offs.'}
+            {t('govtEscrowDesc') || 'Funds are deposited into the Central Multi-State Cooperative Society (MSCS) Trust Escrow Account (sandbox prototype). Artisans are compensated strictly upon verified milestone sign-offs.'}
           </Text>
           <View style={styles.trustAccountBox}>
             <Text style={styles.trustAccountKey}>{t('escrowBeneficiary') || 'ESCROW TRUST BENEFICIARY:'}</Text>
-            <Text style={styles.trustAccountVal}>SBI-MSCS-COOP-SERVICES-ESCROW-8839</Text>
+            <Text style={styles.trustAccountVal}>UNISERV-ESCROW-SANDBOX-8839</Text>
           </View>
         </View>
 
@@ -408,7 +408,7 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
               <Ionicons name="phone-portrait" size={18} color={colors.primary} />
             </View>
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.methodTitle}>{t('instantUpi') || 'Instant UPI (GPay / PhonePe / Paytm / BHIM)'}</Text>
+              <Text style={styles.methodTitle}>{t('instantUpi') || 'PayPal Sandbox (USD) / Cooperative Wallet'}</Text>
               <Text style={styles.methodSub}>{t('zeroFeeInstantCredit') || 'Zero transaction fees • Instant Escrow Credit'}</Text>
             </View>
             <Ionicons
@@ -449,7 +449,7 @@ export const Screen12_BulkPaymentScreen = ({ navigation }) => {
             </View>
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.methodTitle}>{t('netbankingNeftTransfer') || 'NetBanking / Direct NEFT Escrow Transfer'}</Text>
-              <Text style={styles.methodSub}>{t('netbankingBanksList') || 'SBI, HDFC, ICICI, Axis, PNB & Co-op Banks'}</Text>
+              <Text style={styles.methodSub}>{t('netbankingBanksList') || 'Major Commercial & Cooperative Banks'}</Text>
             </View>
             <Ionicons
               name={selectedMethod === 'netbanking' ? 'radio-button-on' : 'radio-button-off'}

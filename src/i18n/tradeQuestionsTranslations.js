@@ -637,8 +637,8 @@ export const BULK_CONFIG_TRANSLATIONS = {
     ],
     materials: [
       { id: 'm0', label: { en: 'Labour Only (Electrical Tools Only)', ta: 'பணியாளர் மட்டும் (மின் கருவிகள் மட்டும்)', hi: 'केवल मजदूरी (केवल विद्युत उपकरण)' }, sub: { en: 'Customer provides all wires, conduits, DB & MCBs', ta: 'வாடிக்கையாளர் அனைத்து ஒயர்கள் & MCBகளை வழங்குகிறார்', hi: 'ग्राहक सभी तार, पाइप, डीबी और एमसीबी प्रदान करेगा' } },
-      { id: 'm1', label: { en: 'Labour + Standard ISI FRLS Wires & MCBs', ta: 'பணியாளர் + ISI தீப்பிடிக்காத FRLS ஒயர்கள் & MCB', hi: 'मजदूरी + मानक ISI FRLS तार और MCB' }, sub: { en: 'Co-op supplies Havells/Polycab FRLS copper wires', ta: 'கூட்டுறவு சங்கம் ஹேவல்ஸ்/பாலிகேப் ஒயர்களை வழங்குகிறது', hi: 'सहकारी समिति हैवेल्स/पॉलीकैब एफआरएलएस कॉपर वायर प्रदान करती है' } },
-      { id: 'm2', label: { en: 'Labour + Premium Smart Modular IoT Grid', ta: 'பணியாளர் + பிரீமியம் ஸ்மார்ட் மாடுலர் சுவிட்சுகள்', hi: 'मजदूरी + प्रीमियम स्मार्ट मॉड्यूलर IoT ग्रिड' }, sub: { en: 'Schneider/Legrand feather-touch smart switches', ta: 'ஷ்னைடர்/லெக்ராண்ட் டச் சுவிட்சுகள் & கெமிக்கல் எர்த்திங்', hi: 'श्नाइडर/लेग्रैंड फेदर-टच स्मार्ट स्विच और केमिकल अर्थिंग' } }
+      { id: 'm1', label: { en: 'Labour + flame-retardant (FRLS) copper wiring & MCBs', ta: 'பணியாளர் + தீப்பிடிக்காத (FRLS) ஒயர்கள் & MCB', hi: 'मजदूरी + फ्लेम-रिटार्डेंट (FRLS) कॉपर वायर और MCB' }, sub: { en: 'Co-op supplies flame-retardant (FRLS) copper wiring', ta: 'கூட்டுறவு சங்கம் தீப்பிடிக்காத FRLS காப்பர் ஒயர்களை வழங்குகிறது', hi: 'सहकारी समिति फ्लेम-रिटार्डेंट FRLS कॉपर वायर प्रदान करती है' } },
+      { id: 'm2', label: { en: 'Labour + Premium Smart Modular IoT Grid', ta: 'பணியாளர் + பிரீமியம் ஸ்மார்ட் மாடுலர் சுவிட்சுகள்', hi: 'मजदूरी + प्रीमियम स्मार्ट मॉड्यूलर IoT ग्रिड' }, sub: { en: 'modular smart touch switches', ta: 'டச் மாடுலர் சுவிட்சுகள் & கெமிக்கல் எர்த்திங்', hi: 'मॉड्यूलर स्मार्ट टच स्विच और केमिकल अर्थिंग' } }
     ]
   },
   s3: { // Cleaner Bulk
@@ -676,7 +676,7 @@ export const BULK_CONFIG_TRANSLATIONS = {
     ],
     materials: [
       { id: 'm0', label: { en: 'Labour Only', ta: 'பணியாளர் மட்டும்', hi: 'केवल मजदूरी' }, sub: { en: 'Customer provides all paint, primer & putty cans', ta: 'வாடிக்கையாளர் அனைத்து பெயிண்ட் & புட்டிகளை வழங்குகிறார்', hi: 'ग्राहक सभी पेंट, प्राइमर और पुट्टी प्रदान करेगा' } },
-      { id: 'm1', label: { en: 'Labour + Standard Co-op Paint & Primer', ta: 'பணியாளர் + கூட்டுறவு பெயிண்ட் & பிரைமர்', hi: 'मजदूरी + मानक सहकारी पेंट और प्राइमर' }, sub: { en: 'Co-op supplies Asian Paints/Berger emulsion & Birla putty', ta: 'கூட்டுறவு சங்கம் ஏசியன் பெயிண்ட்ஸ் & பிர்லா புட்டியை வழங்குகிறது', hi: 'सहकारी समिति एशियन पेंट्स/बर्जर इमल्शन और बिड़ला पुट्टी प्रदान करती है' } },
+      { id: 'm1', label: { en: 'Labour + Standard Co-op Paint & Primer', ta: 'பணியாளர் + கூட்டுறவு பெயிண்ட் & பிரைமர்', hi: 'मजदूरी + मानक सहकारी पेंट और प्राइमर' }, sub: { en: 'Co-op supplies high-performance polymer emulsion & putty', ta: 'கூட்டுறவு சங்கம் பாலிமர் எமல்ஷன் பெயிண்ட் வழங்குகிறது', hi: 'सहकारी समिति हाई-परफॉर्मेंस पॉलीमर इमल्शन और पुट्टी प्रदान करती है' } },
       { id: 'm2', label: { en: 'Labour + Premium Luxury Anti-Damp Paint', ta: 'பணியாளர் + பிரீமியம் சொகுசு ஈரப்பதம் எதிர்ப்பு பெயிண்ட்', hi: 'मजदूरी + प्रीमियम लक्जरी एंटी-डैम्प पेंट' }, sub: { en: 'Royale luxury washable paint & anti-fungal seal', ta: 'ராயல் சொகுசு வாஷபிள் பெயிண்ட் & பூஞ்சை எதிர்ப்பு பூச்சு', hi: 'रॉयल लक्जरी वॉशेबल पेंट और एंटी-फंगल सील' } }
     ]
   },

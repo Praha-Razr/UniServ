@@ -35,16 +35,16 @@ const Stack = createNativeStackNavigator();
 export const AppNavigator = () => {
   const { isLoggedIn, isLoading, user } = useUser();
 
-  // Instant Government Co-op Splash Indicator while AsyncStorage loads
+  // Instant Splash Indicator while AsyncStorage loads
   if (isLoading) {
     return (
       <View style={styles.splashContainer}>
         <View style={styles.splashIconCircle}>
           <Ionicons name="shield-checkmark" size={38} color="#FFFFFF" />
         </View>
-        <Text style={styles.splashGovTag}>MINISTRY OF COOPERATION • NCCT</Text>
+        <Text style={styles.splashGovTag}>UniServ Cooperative Gig Platform</Text>
         <Text style={styles.splashTitle}>UniServ</Text>
-        <Text style={styles.splashSub}>National Cooperative Gig Services Platform</Text>
+        <Text style={styles.splashSub}>Independent Prototype • Sandbox Payments Only</Text>
         <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 24 }} />
       </View>
     );

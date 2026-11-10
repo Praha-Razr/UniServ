@@ -466,13 +466,13 @@ export const Screen03_Home = ({ navigation }) => {
             <View style={styles.communityTextCol}>
               <View style={styles.communityBadgeRow}>
                 <Text style={styles.communityBadge}>COLLEGES, CAMPUSES & HOUSING SOCIETIES</Text>
-                <View style={styles.ncctPill}>
-                  <Text style={styles.ncctPillText}>{t('ncctVerified') || 'NCCT VERIFIED'}</Text>
+                <View style={styles.coopStatusPill}>
+                  <Text style={styles.coopStatusPillText}>{t('coopVerified') || 'COOP VERIFIED'}</Text>
                 </View>
               </View>
               <Text style={styles.communityTitle}>Community & Campus Bulk Hub</Text>
               <Text style={styles.communityDesc}>
-                Statutory audits, mega reservoirs, student hostel cleaning, and multi-artisan squads for colleges & RWAs.
+                Facility audits, mega reservoirs, student hostel cleaning, and multi-artisan squads for colleges & RWAs.
               </Text>
 
               {/* Quick Mode Chips */}
@@ -928,14 +928,14 @@ const styles = StyleSheet.create({
     color: colors.primary,
     letterSpacing: 0.5
   },
-  ncctPill: {
+  coopStatusPill: {
     backgroundColor: colors.successLight,
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
     marginLeft: 6
   },
-  ncctPillText: {
+  coopStatusPillText: {
     fontSize: 8,
     fontWeight: '800',
     color: colors.successDark

@@ -31,7 +31,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const PAYMENT_METHODS = [
-    { id: 'UPI', label: t('instantUpi') || 'Instant UPI (GPay, PhonePe, Paytm)', icon: 'flash', badge: t('fastest') || 'Fastest' },
+    { id: 'UPI', label: t('instantUpi') || 'PayPal Sandbox (USD) / Cooperative Wallet', icon: 'flash', badge: t('fastest') || 'Fastest' },
     { id: 'Card', label: t('cardPayment') || 'Credit / Debit Card', icon: 'card', badge: null },
     { id: 'Wallet', label: t('coopWallet') || 'Cooperative Citizen Wallet', icon: 'wallet', badge: `₹500 ${t('balance') || 'Balance'}` },
     { id: 'Cash', label: t('codPayment') || 'Cash on Delivery', icon: 'cash', badge: null }

@@ -15,7 +15,7 @@ export const BULK_SERVICE_CONFIGS = {
     category: 'institutional',
     title: 'Campus Mega Water Reservoir & RO Plant Sanitization',
     trade_name: 'Hydraulic Reservoir & Potability Engineering',
-    tagline: 'Deep sludge dewatering, 400-bar hydro-jet descaling, and NABL potability testing for campus sumps & RO plants.',
+    tagline: 'Deep sludge dewatering, 400-bar hydro-jet descaling, and Water Quality Test Report (prototype) for campus sumps & RO plants.',
     icon: 'water',
     custom_sections: [
       {
@@ -39,10 +39,10 @@ export const BULK_SERVICE_CONFIGS = {
       },
       {
         id: 'lab_certification',
-        label: '3. Statutory Lab Certification Tier',
+        label: '3. Technical Standards (prototype) Tier',
         options: [
-          { id: 'cert_bis_nabl', label: 'BIS 10500 Potability Test (NABL Accredited Lab Report)', cost_mult: 1.15, crew_delta: 0, days_delta: 0, detail: 'Full pre & post coliform + TDS chemical count' },
-          { id: 'cert_standard', label: 'Standard Cooperative Sanitization Compliance Certificate', cost_mult: 1.0, crew_delta: 0, days_delta: 0, detail: 'Ward coordinator physical audit sign-off' }
+          { id: 'cert_bis_water_report', label: 'Potability Test (Water Quality Test Report (prototype))', cost_mult: 1.15, crew_delta: 0, days_delta: 0, detail: 'Full pre & post coliform + TDS chemical count' },
+          { id: 'cert_standard', label: 'Standard Cooperative Sanitization Compliance Report', cost_mult: 1.0, crew_delta: 0, days_delta: 0, detail: 'Ward coordinator physical audit sign-off' }
         ]
       }
     ],
@@ -54,13 +54,13 @@ export const BULK_SERVICE_CONFIGS = {
       { name: 'Heavy Wet/Dry Industrial Slurry Siphon', spec: '80-Litre twin turbine suction extractor', safety_grade: 'Heavy Commercial Rated', icon: 'build' }
     ],
     statutory_compliance: {
-      code: 'BIS 10500:2012 / AICTE Campus Health Protocol',
-      issuing_body: 'NABL Accredited Testing Laboratory & NCCT Federation Health Desk',
-      audit_report: 'Potable Drinking Water Test Certificate with Coliform & Heavy Metal Analysis',
-      mandatory_legal: 'Mandatory statutory water compliance for NAAC/NIRF institutional accreditations'
+      code: 'Campus Health Protocol (Technical Standards (prototype))',
+      issuing_body: 'Water Quality Testing Laboratory & Cooperative Health Desk',
+      audit_report: 'Potable Drinking Water Test Report with Coliform & Heavy Metal Analysis',
+      mandatory_legal: 'Standard water compliance for institutional facilities'
     },
     squad_composition: [
-      '1 Confined-Space Safety & Quality Engineer',
+      '1 Confined-Space Safety & Quality Lead',
       '2 Master Hydraulics & Sump Dewatering Technicians',
       '3 High-Pressure Jetting & Chemical Sterilization Operators'
     ],
@@ -69,7 +69,7 @@ export const BULK_SERVICE_CONFIGS = {
       'High-pressure (400 Bar) rotary wall descaling removing bio-films and lime scales',
       'Food-grade antimicrobial sterilization and fungal spore wash',
       'Commercial RO membrane inspection, sediment backwash, and pre-filter flush',
-      'Digital pre/post inspection photo audit and NABL accredited potability lab certificate'
+      'Digital pre/post inspection photo audit and Water Quality Test Report (prototype)'
     ],
     base_math: { crew: 6, days: 2, minCost: 9500, maxCost: 16500 }
   },
@@ -79,7 +79,7 @@ export const BULK_SERVICE_CONFIGS = {
     category: 'institutional',
     title: 'Campus Substation, Lab Earthing & Electrical Safety Audit',
     trade_name: 'High-Voltage Electrical & Substation Engineering',
-    tagline: 'Infrared thermography, transformer oil BDV breakdown tests, and CEA Form-A safety certifications.',
+    tagline: 'Infrared thermography, transformer oil BDV breakdown tests, and safety audit reports.',
     icon: 'flash',
     custom_sections: [
       {
@@ -89,7 +89,7 @@ export const BULK_SERVICE_CONFIGS = {
           { id: 'sub_yard', label: '11KV/33KV Substation Transformer Yard & Switchgear', cost_mult: 1.45, crew_delta: 2, days_delta: 1, detail: 'Oil BDV dielectric & busbar torque audit' },
           { id: 'sub_labs', label: 'Computer & AI Science Lab Chemical Earthing (<1 Ohm)', cost_mult: 1.2, crew_delta: 1, days_delta: 0, detail: 'Fall-of-potential test on server neutral pits' },
           { id: 'sub_dg', label: 'Campus Backup DG Synchronizer & AMF Load Bank (250+ KVA)', cost_mult: 1.3, crew_delta: 1, days_delta: 1, detail: 'Automatic load shedding & phase balance check' },
-          { id: 'sub_campus_full', label: 'Integrated Campus Grid (Substation + 30+ Earth Pits + Arresters)', cost_mult: 2.2, crew_delta: 4, days_delta: 2, detail: 'Complete campus electrical statutory audit' }
+          { id: 'sub_campus_full', label: 'Integrated Campus Grid (Substation + 30+ Earth Pits + Arresters)', cost_mult: 2.2, crew_delta: 4, days_delta: 2, detail: 'Complete campus electrical audit' }
         ]
       },
       {
@@ -98,34 +98,34 @@ export const BULK_SERVICE_CONFIGS = {
         options: [
           { id: 'test_flir_megger', label: 'FLIR Infrared Thermal Scan + 5kV Digital Megger Insulation', cost_mult: 1.25, crew_delta: 1, days_delta: 0, detail: 'Reveals breaker hotspots, loose lugs & insulation drop' },
           { id: 'test_standard', label: 'Standard Earth Resistance & Breaker Continuity Check', cost_mult: 1.0, crew_delta: 0, days_delta: 0, detail: 'Digital fall-of-potential testing' },
-          { id: 'test_full_cea', label: 'Full CEA Reg 2010 Audit (Thermal, BDV, Harmonics & Pits)', cost_mult: 1.4, crew_delta: 2, days_delta: 1, detail: 'Comprehensive statutory inspection report' }
+          { id: 'test_full_cea', label: 'Full Electrical Safety Audit (Thermal, BDV, Harmonics & Pits)', cost_mult: 1.4, crew_delta: 2, days_delta: 1, detail: 'Comprehensive technical inspection report' }
         ]
       }
     ],
     machinery_roster: [
-      { name: 'Fluke Ti480 PRO Industrial Thermal Camera', spec: '640x480 resolution infrared sensor with laser autofocus', safety_grade: 'CAT IV 600V Certified', icon: 'scan' },
+      { name: 'Fluke Ti480 PRO Industrial Thermal Camera', spec: '640x480 resolution infrared sensor with laser autofocus', safety_grade: 'CAT IV 600V Rated', icon: 'scan' },
       { name: '4-Terminal Digital Earth Resistance Tester', spec: '0.01 to 2000 Ohm measuring range with 4-stake array', safety_grade: 'IEC 61010-1 Safety Rated', icon: 'git-network' },
       { name: '60kV Automatic Transformer Oil BDV Tester', spec: 'Motorized spherical electrode oil dielectric breakdown tester', safety_grade: 'IS 6792 / IEC 60156 Standard', icon: 'nuclear' },
       { name: '5kV High-Voltage Digital Insulation Megger', spec: '5 Tera-Ohm insulation range with polarization index (PI)', safety_grade: 'CAT IV 1000V Surge Proof', icon: 'flash' },
       { name: 'Fluke 435-II Power Quality & Harmonic Analyzer', spec: '3-phase harmonic distortion & true RMS load logger', safety_grade: 'Class A EN 50160 Compliant', icon: 'analytics' }
     ],
     statutory_compliance: {
-      code: 'CEA Regulations 2010 (Measures relating to Safety & Electric Supply)',
-      issuing_body: 'Government Grade-A Licensed Electrical Inspectorate & NCCT',
-      audit_report: 'Form-A Statutory Electrical Safety Audit Certificate',
-      mandatory_legal: 'Required for college building safety, Fire NOC, and AICTE approval'
+      code: 'Technical Standards (prototype) (Measures relating to Safety & Electric Supply)',
+      issuing_body: 'Licensed Electrical Engineering Desk',
+      audit_report: 'Form-A Electrical Safety Audit Report (prototype)',
+      mandatory_legal: 'Recommended for building safety, Fire NOC, and technical readiness'
     },
     squad_composition: [
-      '1 Certified Grade-A Electrical Safety Inspector',
+      '1 Electrical Safety Lead Inspector',
       '2 High-Tension Substation & Switchgear Electricians',
       '2 Chemical Earthing & Megger Testing Specialists'
     ],
     deliverables: [
       'Infrared thermographic heat anomaly report for all transformer lugs and LT busbars',
       'Digital fall-of-potential earth pit resistance log (<1 Ohm lab neutral compliance)',
-      'Transformer oil dielectric breakdown voltage (BDV) test certificate',
+      'Transformer oil dielectric breakdown voltage (BDV) test report',
       'Campus lightning arrester protection radius verification and continuity log',
-      'Official CEA Regulation 2010 Form-A Safety Compliance Document'
+      'Technical Standards (prototype) Electrical Safety Report'
     ],
     base_math: { crew: 5, days: 3, minCost: 14500, maxCost: 24500 }
   },
@@ -191,7 +191,7 @@ export const BULK_SERVICE_CONFIGS = {
     category: 'institutional',
     title: 'Institutional Solar Rooftop & Streetlight Fleet Overhaul',
     trade_name: 'Solar Photovoltaic & Renewable Asset Engineering',
-    tagline: 'De-ionized soft water rotary cleaning, string I-V curve tracing, and MNRE efficiency audit.',
+    tagline: 'De-ionized soft water rotary cleaning, string I-V curve tracing, and solar efficiency audit.',
     icon: 'sunny',
     custom_sections: [
       {
@@ -222,14 +222,14 @@ export const BULK_SERVICE_CONFIGS = {
       { name: 'High-Altitude Fall-Arrest Lifeline & Roof Anchor Kit', spec: 'Dual lanyard shock absorbing harness & permanent static lines', safety_grade: 'EN 361 / IS 3521 Safety Standard', icon: 'shield-checkmark' }
     ],
     statutory_compliance: {
-      code: 'Ministry of New and Renewable Energy (MNRE) Solar Safety Guidelines',
-      issuing_body: 'Certified Solar PV Commissioning Engineer & State DISCOM Liaison',
-      audit_report: 'MNRE Solar Generation Optimization & Efficiency Audit Certificate',
-      mandatory_legal: 'Enables statutory DISCOM net-metering compliance and green campus ratings'
+      code: 'Technical Standards (prototype) Solar Safety Guidelines',
+      issuing_body: 'Solar PV Commissioning Engineer & State DISCOM Liaison',
+      audit_report: 'Solar Generation Optimization & Efficiency Audit Document',
+      mandatory_legal: 'Enables DISCOM net-metering compliance and green campus ratings'
     },
     squad_composition: [
       '1 Solar Commissioning Engineer & Quality Lead',
-      '2 High-Altitude Fall-Arrest Certified Solar Technicians',
+      '2 High-Altitude Fall-Arrest Solar Technicians',
       '2 Inverter & Switchgear Maintenance Electricians'
     ],
     deliverables: [
@@ -237,7 +237,7 @@ export const BULK_SERVICE_CONFIGS = {
       'I-V curve trace showing actual string output vs factory rated capacity',
       'Thermal imaging audit report identifying hotspot micro-cracks and bypass diode faults',
       'Torque check and re-crimping of DC MC4 connectors and combiner boxes',
-      'Official MNRE Efficiency Gain Certificate with guaranteed 8% to 15% generation boost'
+      'Solar Efficiency Gain Report (prototype) with estimated 8% to 15% generation boost'
     ],
     base_math: { crew: 5, days: 2, minCost: 10500, maxCost: 18500 }
   },
@@ -320,7 +320,7 @@ export const BULK_SERVICE_CONFIGS = {
         id: 'paint_specification',
         label: '2. Coating System & Surface Preparation Grade',
         options: [
-          { id: 'paint_apex_protek', label: 'Asian Paints Apex Ultima Protek / Berger WeatherCoat (10-Yr Guarantee)', cost_mult: 1.3, crew_delta: 1, days_delta: 1, detail: 'Fiber-mesh crack-bridging polymer system' },
+          { id: 'paint_apex_protek', label: 'High-performance polymer emulsion / Weatherproof Exterior Emulsion (10-Yr Guarantee)', cost_mult: 1.3, crew_delta: 1, days_delta: 1, detail: 'Fiber-mesh crack-bridging polymer system' },
           { id: 'paint_acrylic_premium', label: 'Premium Interior Anti-Bacterial Acrylic Emulsion', cost_mult: 1.0, crew_delta: 0, days_delta: 0, detail: '2 coats primer + 2 coats high-scrub paint' },
           { id: 'paint_waterproof_crack', label: 'Plaster Crack Mesh Polymer Repair + Waterproof Base Coat', cost_mult: 1.25, crew_delta: 2, days_delta: 1, detail: 'Structural polymer injection against seepage' }
         ]
@@ -335,13 +335,13 @@ export const BULK_SERVICE_CONFIGS = {
     ],
     statutory_compliance: {
       code: 'National Building Code (NBC 2016) Vol 1 Architectural Coatings & VOC Limits',
-      issuing_body: 'Cooperative Coatings Guild & Certified Paint Manufacturer Technical Cell',
-      audit_report: '10-Year Surface Waterproofing & Color Fastness Joint Warranty Certificate',
+      issuing_body: 'Cooperative Coatings Guild & Paint Manufacturer Technical Cell',
+      audit_report: '10-Year Surface Waterproofing & Color Fastness Joint Warranty Document',
       mandatory_legal: 'Protects structural RCC plaster from carbonation and dampness decay'
     },
     squad_composition: [
-      '1 Surface Coating Architect & Project Lead',
-      '4 High-Altitude Scaffolding Certified Master Painters',
+      '1 Surface Coating Lead & Project Lead',
+      '4 High-Altitude Scaffolding Master Painters',
       '6 Surface Preparation, Putty & Plastering Artisans'
     ],
     deliverables: [
@@ -415,7 +415,7 @@ export const BULK_SERVICE_CONFIGS = {
     category: 'institutional',
     title: 'College Transport Fleet Drivers & Event Chauffeurs',
     trade_name: 'Commercial Fleet Logistics & Executive Transport Escort',
-    tagline: 'Police-verified commercial bus drivers (PSV/HMV badge), exam transit escorts, and VIP chauffeurs.',
+    tagline: 'Cooperative KYC & Skill Verified commercial bus drivers (PSV/HMV badge), exam transit escorts, and VIP chauffeurs.',
     icon: 'car',
     custom_sections: [
       {
@@ -423,9 +423,9 @@ export const BULK_SERVICE_CONFIGS = {
         label: '1. Select Deployment Role & Transit Requirement',
         options: [
           { id: 'fleet_bus_route', label: 'Scheduled College Bus Route Coverage (Morning/Evening)', cost_mult: 1.0, crew_delta: 0, days_delta: 0, detail: 'Heavy commercial PSV badge drivers with campus route experience' },
-          { id: 'fleet_exam_transit', label: 'Confidential University Exam Paper Transit Escort', cost_mult: 1.4, crew_delta: 1, days_delta: 0, detail: 'Tamper-evident locked transit protocol with police-verified drivers' },
+          { id: 'fleet_exam_transit', label: 'Confidential University Exam Paper Transit Escort', cost_mult: 1.4, crew_delta: 1, days_delta: 0, detail: 'Tamper-evident locked transit protocol with Cooperative KYC & Skill Verified drivers' },
           { id: 'fleet_vip_pool', label: 'Convocation & International Conference VIP Chauffeur Pool', cost_mult: 1.3, crew_delta: 2, days_delta: 1, detail: 'Uniformed executive sedan/SUV chauffeurs with etiquette training' },
-          { id: 'fleet_ambulance', label: 'Campus 24x7 Emergency Medical Transit Standby (3 Shifts)', cost_mult: 1.6, crew_delta: 2, days_delta: 2, detail: 'First-aid & trauma emergency response certified drivers' }
+          { id: 'fleet_ambulance', label: 'Campus 24x7 Emergency Medical Transit Standby (3 Shifts)', cost_mult: 1.6, crew_delta: 2, days_delta: 2, detail: 'First-aid & trauma emergency response trained drivers' }
         ]
       },
       {
@@ -441,23 +441,23 @@ export const BULK_SERVICE_CONFIGS = {
         id: 'screening_protocol',
         label: '3. Screening & Safety Protocol',
         options: [
-          { id: 'fleet_full_police', label: '100% Police Clearance Verification Dossier + Biometric KYC', cost_mult: 1.1, crew_delta: 0, days_delta: 0, detail: 'Zero criminal record, authentic commercial RTO badges' },
+          { id: 'fleet_full_verification', label: '100% Cooperative KYC & Skill Verified Dossier', cost_mult: 1.1, crew_delta: 0, days_delta: 0, detail: 'Zero violation record, authentic commercial RTO badges' },
           { id: 'fleet_breathalyzer', label: 'Daily Pre-Trip Digital Breathalyzer & Health Check Protocol', cost_mult: 1.15, crew_delta: 0, days_delta: 0, detail: 'Mandatory zero-tolerance 0.00% alcohol digital logging' }
         ]
       }
     ],
     machinery_roster: [
-      { name: 'Fuel-Cell Professional Digital Breathalyzer', spec: 'Law-enforcement grade sensor with 0.000% BAC digital printout', safety_grade: 'DOT / NHTSA Certified Instrument', icon: 'speedometer' },
+      { name: 'Fuel-Cell Professional Digital Breathalyzer', spec: 'Commercial grade sensor with 0.000% BAC digital printout', safety_grade: 'DOT / NHTSA Approved Instrument', icon: 'speedometer' },
       { name: 'Smart Biometric Driver Attendance & GPS Tracker', spec: 'Cellular tamper-proof beacon logging real-time bus speed and stops', safety_grade: 'AIS-140 Compliant Device', icon: 'navigate' },
       { name: 'Commercial Heavy Passenger (PSV/HMV) Driver Uniform Kits', spec: 'Reflective high-visibility uniform with photo ID badge and epaulettes', safety_grade: 'State RTO Approved Uniform Standard', icon: 'shirt' },
-      { name: 'St. John Ambulance Certified First Aid & Trauma Kit', spec: 'Automated external kit with splints, burn dressings, and tourniquets', safety_grade: 'Emergency Medical Standard', icon: 'medkit' },
+      { name: 'First Aid & Trauma Kit', spec: 'Automated external kit with splints, burn dressings, and tourniquets', safety_grade: 'Emergency Medical Standard', icon: 'medkit' },
       { name: 'Tamper-Evident Exam Paper Security Transit Box', spec: 'Dual digital keypad lock with tamper-evident serial seal bands', safety_grade: 'High-Security Transit Specification', icon: 'lock-closed' }
     ],
     statutory_compliance: {
-      code: 'Motor Vehicles Act 1988 (Sec 9-10 Heavy Passenger Badging) & Supreme Court Guidelines',
-      issuing_body: 'Transport Department RTO & District Police Commissioner Verification Cell',
-      audit_report: 'Commercial Driver Verification Dossier & Medical Fitness Certificate Form-1A',
-      mandatory_legal: 'Mandatory compliance with Supreme Court school/college transport safety guidelines'
+      code: 'Motor Vehicles Act (Heavy Passenger Badging) & Safety Guidelines',
+      issuing_body: 'Transport Department RTO & Cooperative Verification Cell',
+      audit_report: 'Commercial Driver Verification Dossier & Medical Fitness Report Form-1A',
+      mandatory_legal: 'Compliance with school/college transport safety guidelines'
     },
     squad_composition: [
       '1 Fleet Transport Operations Coordinator',
@@ -465,7 +465,7 @@ export const BULK_SERVICE_CONFIGS = {
       'Executive VIP Chauffeurs (LMV-Commercial)'
     ],
     deliverables: [
-      'Dispatch of 100% police-cleared, licensed commercial passenger bus drivers',
+      'Dispatch of 100% Cooperative KYC & Skill Verified, licensed commercial passenger bus drivers',
       'Pre-trip digital breathalyzer alcohol screening and blood pressure logging',
       'Strict adherence to university bus routes and timetable stops',
       'Chain-of-custody sealed escort for confidential examination paper transit',
@@ -509,7 +509,7 @@ export const BULK_SERVICE_CONFIGS = {
         label: '3. Antimicrobial Sterilization & Testing Grade',
         options: [
           { id: 'steril_uv_nano', label: '6-Stage Mechanized (Rotary Jet + UV-C Wand + Shock Tablets)', cost_mult: 1.0, crew_delta: 0, days_delta: 0, detail: 'Complete pathogen kill without lingering chlorine odor' },
-          { id: 'steril_potability_lab', label: '6-Stage Mechanized + NABL Lab Water Potability Test', cost_mult: 1.25, crew_delta: 0, days_delta: 0, detail: 'Includes certified laboratory report on coliform bacteria & hardness' }
+          { id: 'steril_potability_lab', label: '6-Stage Mechanized + Water Quality Test Report (prototype)', cost_mult: 1.25, crew_delta: 0, days_delta: 0, detail: 'Includes laboratory report on coliform bacteria & hardness' }
         ]
       }
     ],
@@ -521,9 +521,9 @@ export const BULK_SERVICE_CONFIGS = {
       { name: 'Telescopic Anti-Bacterial Scrubbers & Squeegees', spec: 'Food-grade nylon bristle scrubbers with reach up to 5 meters', safety_grade: 'Food Contact Safe', icon: 'brush' }
     ],
     statutory_compliance: {
-      code: 'Central Ground Water Board & Municipal Potable Water Hygiene Standard',
-      issuing_body: 'Cooperative Water Health Wing & NABL Testing Facility',
-      audit_report: 'RWA Potable Water Tank Cleaning Handover & Disinfection Certificate',
+      code: 'Potable Water Hygiene Standard (Technical Standards (prototype))',
+      issuing_body: 'Cooperative Water Health Wing & Testing Facility',
+      audit_report: 'RWA Potable Water Tank Cleaning Handover & Disinfection Report',
       mandatory_legal: 'Provides verified proof of clean water storage for society residents'
     },
     squad_composition: [
@@ -572,18 +572,18 @@ export const BULK_SERVICE_CONFIGS = {
     machinery_roster: [
       { name: 'Fluke Industrial Infrared Thermal Imaging Camera', spec: 'Calibrated thermography gun detecting loose contacts and overheating breakers', safety_grade: 'CAT IV 600V Rated', icon: 'scan' },
       { name: '4-Terminal Digital Earth Resistance Tester', spec: 'Fall-of-potential precision tester with ground probe spikes', safety_grade: 'IEC 61010-1 Safety Rated', icon: 'git-network' },
-      { name: 'True-RMS Digital Clamp Meter (1000A AC/DC)', spec: 'Harmonic and inrush current logging on elevator feeder lines', safety_grade: 'CAT III 1000V Certified', icon: 'speedometer' },
+      { name: 'True-RMS Digital Clamp Meter (1000A AC/DC)', spec: 'Harmonic and inrush current logging on elevator feeder lines', safety_grade: 'CAT III 1000V Rated', icon: 'speedometer' },
       { name: '1000V High-Voltage Insulation Resistance Tester', spec: 'Tests cable insulation health between conductors and earth', safety_grade: 'High-Voltage Insulation Grade', icon: 'flash' },
       { name: 'Phase Rotation & Automatic Breaker Trip Timing Meter', spec: 'Measures relay trip time in milliseconds under fault simulation', safety_grade: 'Precision Relay Grade', icon: 'time' }
     ],
     statutory_compliance: {
-      code: 'National Electrical Code (NEC 2023) & CEA Safety Regulations',
-      issuing_body: 'Licensed Grade-A Electrical Contractor & Fire Safety Authority Liaison',
-      audit_report: 'Form B-2 Electrical Health Audit Certificate for Society Fire NOC Renewal',
+      code: 'National Electrical Code & Safety Standards (Technical Standards (prototype))',
+      issuing_body: 'Licensed Electrical Engineering & Fire Safety Liaison Desk',
+      audit_report: 'Form B-2 Electrical Health Audit Report for Society Fire NOC Renewal',
       mandatory_legal: 'Required for society lift license renewal and building insurance claims'
     },
     squad_composition: [
-      '1 Certified Grade-A Electrical Inspector',
+      '1 Electrical Safety Lead Inspector',
       '2 Licensed Industrial Wiremen & Panel Technicians',
       '1 Earth Pit Restoration Specialist'
     ],
@@ -681,18 +681,18 @@ export const BULK_SERVICE_CONFIGS = {
     machinery_roster: [
       { name: 'Portable De-Ionized RO Water Cart (<10 PPM)', spec: 'Mobile multi-bed resin de-ionizer producing zero-mineral wash water', safety_grade: 'Glass Scratch-Free Pure Water Class', icon: 'water' },
       { name: 'Telescopic Carbon-Fiber Water-Fed Poles (10m)', spec: 'Ultralight poles with dual micro-jet rotary scratch-free brushes', safety_grade: 'Solar Module Safe Standard', icon: 'brush' },
-      { name: 'Solar PV Array Diagnostic Multimeter', spec: '1000V DC Voc and Isc string diagnostic tool', safety_grade: 'CAT III 1000V Certified', icon: 'analytics' },
+      { name: 'Solar PV Array Diagnostic Multimeter', spec: '1000V DC Voc and Isc string diagnostic tool', safety_grade: 'CAT III 1000V Rated', icon: 'analytics' },
       { name: 'Infrared Solar Cell Surface Thermal Scanner', spec: 'Handheld thermography scanner checking for diode hotspot degradation', safety_grade: 'IEC 62446-3 Class', icon: 'scan' },
       { name: 'Rooftop Fall-Protection Static Line & Harness Kit', spec: 'Full-body safety harnesses with twin carabiner lanyards', safety_grade: 'EN 361 Fall Arrest Standard', icon: 'shield-checkmark' }
     ],
     statutory_compliance: {
-      code: 'MNRE Rooftop Solar Maintenance & Safety Guidelines',
-      issuing_body: 'Certified Solar PV Technician & DISCOM Net-Metering Desk',
-      audit_report: 'RWA Solar Generation Optimization & Array Health Certificate',
+      code: 'Technical Standards (prototype) Rooftop Solar Maintenance & Safety Guidelines',
+      issuing_body: 'Solar PV Technician & DISCOM Net-Metering Desk',
+      audit_report: 'RWA Solar Generation Optimization & Array Health Report',
       mandatory_legal: 'Validates optimal solar power generation for DISCOM net-metering credits'
     },
     squad_composition: [
-      '1 Certified Solar PV Technician',
+      '1 Solar PV Technician Lead',
       '3 High-Altitude Solar Cleaning Artisans'
     ],
     deliverables: [
@@ -765,7 +765,7 @@ export const BULK_SERVICE_CONFIGS = {
     category: 'residential',
     title: 'Perimeter Wall & Society Exterior Painting Contract',
     trade_name: 'Perimeter Barrier Coatings, Weather Defense & Society Facade Aesthetics',
-    tagline: 'Power wash moss removal, plaster crack repair, Asian Paints Apex/Protek, and boom barrier reflective markings.',
+    tagline: 'Power wash moss removal, plaster crack repair, high-performance polymer emulsion, and boom barrier reflective markings.',
     icon: 'color-palette',
     custom_sections: [
       {
@@ -782,8 +782,8 @@ export const BULK_SERVICE_CONFIGS = {
         id: 'paint_rwa_grade',
         label: '2. Paint Grade & Surface Waterproofing System',
         options: [
-          { id: 'paint_rwa_apex', label: 'Asian Paints Apex / Berger WeatherCoat Exterior Emulsion (2 Coats)', cost_mult: 1.0, crew_delta: 0, days_delta: 0, detail: 'Weather-proof silicon additive prevents dampness and flaking' },
-          { id: 'paint_rwa_protek', label: 'Asian Paints Apex Ultima Protek with Fiber-Mesh Waterproofing', cost_mult: 1.35, crew_delta: 2, days_delta: 1, detail: '7-Year anti-crack warranty shield against heavy monsoon rains' },
+          { id: 'paint_rwa_apex', label: 'Weatherproof Exterior Emulsion (2 Coats)', cost_mult: 1.0, crew_delta: 0, days_delta: 0, detail: 'Weather-proof silicon additive prevents dampness and flaking' },
+          { id: 'paint_rwa_protek', label: 'High-performance polymer emulsion with Fiber-Mesh Waterproofing', cost_mult: 1.35, crew_delta: 2, days_delta: 1, detail: '7-Year anti-crack warranty shield against heavy monsoon rains' },
           { id: 'paint_rwa_waterproof_base', label: 'Power Wash + Plaster Crack Filling + Silicone Waterproof Primer', cost_mult: 1.2, crew_delta: 1, days_delta: 0, detail: 'Crucial for aged boundary walls with efflorescence and peeling paint' }
         ]
       }

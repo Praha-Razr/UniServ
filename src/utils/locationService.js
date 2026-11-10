@@ -346,7 +346,7 @@ export const getHyperLocalCooperative = (userAddress) => {
 
   // Generate authentic city cooperative name
   const coopName = `${loc.city} District Labour & Artisans Cooperative Federation`;
-  const regNo = `MSCS/CR/${stateRTO}-2021/${Math.floor(100 + Math.random() * 899)} (NCCT Affiliated)`;
+  const regNo = `MSCS/CR/${stateRTO}-2021/${Math.floor(100 + Math.random() * 899)} (Cooperative Registered)`;
   const wardCoverage = `${loc.locality}, ${loc.district}, ${loc.city}`;
 
   return {

@@ -151,7 +151,7 @@ export const serviceTranslations = {
         "Vital recording & family update",
         "Safe handover"
       ],
-      safety_note: "Police-verified and background-checked caregivers trained in geriatric first aid.",
+      safety_note: "Cooperative KYC & Skill Verified caregivers trained in geriatric first aid.",
       trust_note: "Operated through Healthcare Worker Cooperative Alliance.",
       coop_warranty_title: "Cooperative Caregiver Assurance",
       coop_warranty_desc: "Certified & verified companion care with dedicated healthcare supervisor oversight.",
@@ -201,7 +201,7 @@ export const serviceTranslations = {
         "Trash disposal & sanitisation",
         "Mutual sign-off"
       ],
-      safety_note: "100% background and police verified through Women Labour Cooperatives with photo identity cards.",
+      safety_note: "100% background and Cooperative KYC & Skill Verified through Women Labour Cooperatives with photo identity cards.",
       trust_note: "Guaranteed fair living wages with zero middleman deductions under Mahila Labour Union.",
       coop_warranty_title: "Cooperative Household Assurance",
       coop_warranty_desc: "Reliable doorstep service with rigorous quality check and supervisor support.",
@@ -210,10 +210,10 @@ export const serviceTranslations = {
     },
     s9: {
       name: "Driver & Cab",
-      description: "Police-verified cooperative chauffeurs for city commutes, airport transfers, outstation round-trips, and commercial cabs.",
+      description: "Cooperative KYC & Skill Verified chauffeurs for city commutes, airport transfers, outstation round-trips, and commercial cabs.",
       duration: "As per trip (2–8 hrs)",
       included: [
-        "Police-verified & commercial license driver",
+        "Cooperative KYC & Skill Verified & commercial license driver",
         "Safe route navigation via GPS",
         "Vehicle sanitization & luggage assistance",
         "Zero surge pricing & transparent hourly rates",

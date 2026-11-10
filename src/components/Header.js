@@ -49,8 +49,12 @@ export const Header = ({
         </TouchableOpacity>
       )}
 
-      {/* Right Actions: Language Badge & Optional Emergency Button */}
+      {/* Right Actions: Sandbox Prototype Badge, Language Badge & Optional Emergency Button */}
       <View style={styles.rightActions}>
+        <View style={styles.sandboxBadge}>
+          <Text style={styles.sandboxBadgeText}>Sandbox Prototype Mode</Text>
+        </View>
+
         {onLanguagePress && (
           <TouchableOpacity
             style={styles.languageBadge}
@@ -145,6 +149,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8
+  },
+  sandboxBadge: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  sandboxBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#92400E'
   },
   languageBadge: {
     flexDirection: 'row',
