@@ -47,6 +47,7 @@ export const UserProvider = ({ children }) => {
   // Load saved user state & database on launch
   useEffect(() => {
     const loadStoredData = async () => {
+      const splashStartTime = Date.now();
       try {
         // 1. Load language preference
         const storedLang = await AsyncStorage.getItem('@uniserv_language');
@@ -64,30 +65,18 @@ export const UserProvider = ({ children }) => {
         }
         setUsersDb(currentDb);
 
-        // 3. Load active session & logged-in state
-        const storedAuth = await AsyncStorage.getItem('@uniserv_is_logged_in');
-        const activePhone = await AsyncStorage.getItem('@uniserv_active_phone');
-
-        if (storedAuth === 'true' && activePhone) {
-          const activeUser = currentDb[activePhone] || (await AsyncStorage.getItem('@uniserv_user') ? JSON.parse(await AsyncStorage.getItem('@uniserv_user')) : null);
-          if (activeUser) {
-            setUser(activeUser);
-            setIsLoggedIn(true);
-          } else {
-            setIsLoggedIn(false);
-          }
-        } else if (storedAuth === 'true') {
-          const storedUser = await AsyncStorage.getItem('@uniserv_user');
-          if (storedUser) {
-            setUser(JSON.parse(storedUser));
-            setIsLoggedIn(true);
-          }
-        } else {
-          setIsLoggedIn(false);
-        }
+        // 3. For prototype evaluation and clear demonstration, always start at the Login screen on app load
+        // Clear any stale persistent login flag so reviewer always experiences the proper splash and login flow
+        await AsyncStorage.removeItem('@uniserv_is_logged_in');
+        setIsLoggedIn(false);
       } catch (e) {
         console.error('Error loading stored user preferences:', e);
       } finally {
+        const elapsed = Date.now() - splashStartTime;
+        const minSplashDuration = 2200; // 2.2 seconds minimum splash duration
+        if (elapsed < minSplashDuration) {
+          await new Promise((resolve) => setTimeout(resolve, minSplashDuration - elapsed));
+        }
         setIsLoading(false);
       }
     };

@@ -13,15 +13,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useUser } from '../context/UserContext';
+import LanguageSelectorModal from '../components/LanguageSelectorModal';
 
 export const Screen02_OTPLogin = ({ navigation }) => {
-  const { user, login, checkUserExists, t } = useUser();
+  const { user, login, checkUserExists, language, setLanguage, t } = useUser();
   const [phoneNumber, setPhoneNumber] = useState('9876543210');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
   const [timer, setTimer] = useState(30);
   const [errorMessage, setErrorMessage] = useState('');
+  const [langModalVisible, setLangModalVisible] = useState(false);
 
   const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
@@ -77,6 +79,11 @@ export const Screen02_OTPLogin = ({ navigation }) => {
     }
   };
 
+  // Quick 1-click Demo Login for Hackathon Evaluation
+  const handleDemoLogin = async () => {
+    await login('9876543210');
+  };
+
   // Verify OTP & Smart Route by Mobile Number
   const handleVerifyOtp = async () => {
     const entered = otpDigits.join('');
@@ -84,13 +91,7 @@ export const Screen02_OTPLogin = ({ navigation }) => {
       const isExistingUser = checkUserExists(phoneNumber);
       await login(phoneNumber);
 
-      if (isExistingUser) {
-        // Returning User: Direct login to Home Screen with saved profile restored
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }]
-        });
-      } else {
+      if (!isExistingUser) {
         // New User: Route to Registration to complete name and doorstep address
         navigation.navigate('Registration', { phone: phoneNumber });
       }
@@ -106,14 +107,35 @@ export const Screen02_OTPLogin = ({ navigation }) => {
         style={styles.keyboardView}
       >
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
+          {/* Top Header Bar with Back Button / Brand Pill and Language Selector */}
+          <View style={styles.topBarRow}>
+            {navigation.canGoBack() ? (
+              <TouchableOpacity
+                style={styles.backBtn}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.brandPill}>
+                <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
+                <Text style={styles.brandPillText}>UniServ Prototype</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.langPill}
+              onPress={() => setLangModalVisible(true)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="globe-outline" size={14} color={colors.primary} />
+              <Text style={styles.langPillText}>
+                {language?.name || 'English'}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.contentHeader}>
             <View style={styles.iconCircle}>
@@ -161,6 +183,22 @@ export const Screen02_OTPLogin = ({ navigation }) => {
                 >
                   <Text style={styles.actionBtnText}>{t('sendOtp')}</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+
+                {/* Quick 1-Click Demo Login for Evaluators */}
+                <View style={styles.demoDividerRow}>
+                  <View style={styles.demoDividerLine} />
+                  <Text style={styles.demoDividerText}>OR QUICK DEMO ACCESS</Text>
+                  <View style={styles.demoDividerLine} />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.quickDemoBtn}
+                  onPress={handleDemoLogin}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="flash" size={15} color={colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.quickDemoBtnText}>Quick Demo Login (Priya Sharma)</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -249,6 +287,14 @@ export const Screen02_OTPLogin = ({ navigation }) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Searchable 23-Language Modal */}
+      <LanguageSelectorModal
+        visible={langModalVisible}
+        onClose={() => setLangModalVisible(false)}
+        currentLanguage={language}
+        onSelectLanguage={(selected) => setLanguage(selected)}
+      />
     </SafeAreaView>
   );
 };
@@ -277,6 +323,45 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     boxSizing: 'border-box'
   },
+  topBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    width: '100%'
+  },
+  brandPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primarySubtle,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  brandPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.primary,
+    marginLeft: 6
+  },
+  langPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  langPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginHorizontal: 6
+  },
   backBtn: {
     width: 40,
     height: 40,
@@ -285,8 +370,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 20
+    borderColor: colors.border
+  },
+  demoDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 14
+  },
+  demoDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border
+  },
+  demoDividerText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textMuted,
+    marginHorizontal: 8,
+    letterSpacing: 0.5
+  },
+  quickDemoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySubtle,
+    borderRadius: 14,
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    paddingHorizontal: 14
+  },
+  quickDemoBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary
   },
   contentHeader: {
     marginBottom: 24

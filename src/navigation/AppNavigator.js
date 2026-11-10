@@ -35,17 +35,18 @@ const Stack = createNativeStackNavigator();
 export const AppNavigator = () => {
   const { isLoggedIn, isLoading, user } = useUser();
 
-  // Instant Splash Indicator while AsyncStorage loads
+  // Initial Loading Splash Screen
   if (isLoading) {
     return (
       <View style={styles.splashContainer}>
         <View style={styles.splashIconCircle}>
-          <Ionicons name="shield-checkmark" size={38} color="#FFFFFF" />
+          <Ionicons name="shield-checkmark" size={42} color="#FFFFFF" />
         </View>
-        <Text style={styles.splashGovTag}>UniServ Cooperative Gig Platform</Text>
+        <Text style={styles.splashGovTag}>UNISERV COOPERATIVE GIG PLATFORM</Text>
         <Text style={styles.splashTitle}>UniServ</Text>
         <Text style={styles.splashSub}>Independent Prototype • Sandbox Payments Only</Text>
         <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 24 }} />
+        <Text style={styles.splashStatusText}>Initializing Cooperative Platform & Sandbox Services...</Text>
       </View>
     );
   }
@@ -54,6 +55,7 @@ export const AppNavigator = () => {
 
   return (
     <Stack.Navigator
+      initialRouteName="OTPLogin"
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right'
@@ -61,11 +63,11 @@ export const AppNavigator = () => {
     >
       {!isFullyRegisteredAndLoggedIn ? (
         // -------------------------------------------------------------------
-        // UNAUTHENTICATED STACK (OTPLogin / Registration / LanguageSelection)
+        // UNAUTHENTICATED STACK (OTPLogin / LanguageSelection / Registration)
         // -------------------------------------------------------------------
         <Stack.Group>
-          <Stack.Screen name="LanguageSelection" component={Screen01_LanguageSelection} />
           <Stack.Screen name="OTPLogin" component={Screen02_OTPLogin} />
+          <Stack.Screen name="LanguageSelection" component={Screen01_LanguageSelection} />
           <Stack.Screen name="Registration" component={Screen02_Registration} />
         </Stack.Group>
       ) : (
@@ -166,6 +168,13 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
     textAlign: 'center'
+  },
+  splashStatusText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 14,
+    textAlign: 'center',
+    letterSpacing: 0.2
   }
 });
 
