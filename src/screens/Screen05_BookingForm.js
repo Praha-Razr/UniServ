@@ -10,12 +10,15 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  Modal
+  Modal,
+  Platform
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useUser } from '../context/UserContext';
 import { useBooking } from '../context/BookingContext';
+import { API_BASE_URL } from '../config/api';
 import Header from '../components/Header';
 import MediaCaptureModal from '../components/MediaCaptureModal';
 import PermissionsModal from '../components/PermissionsModal';
@@ -28,6 +31,7 @@ import {
   getLocalizedTradeQuestions,
   getLocalizedTradeBulkConfig
 } from '../utils/i18nHelper';
+const { toUsdCents, authorizationCeiling, SANDBOX_DEMO_EXCHANGE_RATE_INR_TO_USD } = require('../utils/settlementEngine');
 
 export const getDynamicSoloPrice = (
   serviceId,
@@ -519,6 +523,178 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
   const welcomeDiscount = isFirstTimeUser ? FIRST_TIME_DISCOUNT : 0;
   const cancellationPenalty = pendingCancellationFee > 0 ? Number(pendingCancellationFee) : 0;
   const finalPayable = Math.max(baseRate + emergencySurge + cancellationPenalty - welcomeDiscount, 49);
+
+  // Web-only PayPal sandbox configuration
+  const isWeb = Platform.OS === 'web';
+  const [paymentMode, setPaymentMode] = useState('standard'); // 'standard' | 'paypal'
+  const [payerName, setPayerName] = useState(user?.name || 'Priya Sharma');
+  const [payerCountry, setPayerCountry] = useState('United States');
+  const [isPayPalSubmitting, setIsPayPalSubmitting] = useState(false);
+  const [cancelNotice, setCancelNotice] = useState(false);
+
+  // Check for restored draft & cancellation notice on mount
+  useEffect(() => {
+    const checkCancelNotice = async () => {
+      try {
+        const notice = await AsyncStorage.getItem('@uniserv_paypal_cancel_notice');
+        if (notice === 'true') {
+          setCancelNotice(true);
+          await AsyncStorage.removeItem('@uniserv_paypal_cancel_notice');
+        }
+        const rawDraft = await AsyncStorage.getItem('@uniserv_paypal_booking_draft');
+        if (rawDraft) {
+          const draft = JSON.parse(rawDraft);
+          if (draft && draft.address && !address) {
+            setAddress(draft.address);
+          }
+          if (draft && draft.landmark && !landmark) {
+            setLandmark(draft.landmark);
+          }
+          if (draft && draft.description && !description) {
+            setDescription(draft.description);
+          }
+        }
+      } catch (e) {}
+    };
+    checkCancelNotice();
+  }, []);
+
+  const totalPaise = finalPayable * 100;
+  const estimateCents = toUsdCents(totalPaise, SANDBOX_DEMO_EXCHANGE_RATE_INR_TO_USD);
+  const ceilingCents = authorizationCeiling(estimateCents);
+  const estimateUsdStr = (estimateCents / 100).toFixed(2);
+  const ceilingUsdStr = (ceilingCents / 100).toFixed(2);
+
+  const handlePayPalBooking = async () => {
+    if (isDriverService && (!pickupAddress.trim() || !dropAddress.trim())) {
+      Alert.alert('Incomplete Route', 'Please enter both Pickup and Drop locations for the driver.');
+      return;
+    }
+
+    setIsPayPalSubmitting(true);
+    try {
+      const compiledNotes = isDriverService
+        ? `Driver Mode: ${driverBookingMode === 'car_with_driver' ? `Car with Driver (${carSeaterType === '5_seater' ? '5 Seater AC Sedan' : '7 Seater SUV/MUV'})` : `Driver Only (${transmissionType})`} | Route: ${pickupAddress} to ${dropAddress} (${tripType})`
+        : `${tradeSubtype ? `Category Focus: ${tradeSubtype}. ` : ''}${tradeScope2 ? `Setup: ${tradeScope2}. ` : ''}${description || 'Standard repair request.'}`;
+
+      const draftBookingRecord = {
+        service,
+        is_bulk_project: false,
+        scale_mode: 'solo',
+        worker_count: isMultiWorkerEligible ? workerCount : 1,
+        single_worker_base: singleWorkerBaseRate,
+        extra_worker_cost: extraWorkerCost,
+        extra_worker_rate: extraWorkerRate,
+        address: isDriverService ? `Pickup: ${pickupAddress} → Drop: ${dropAddress}` : address,
+        pickup_address: isDriverService ? pickupAddress : address,
+        drop_address: isDriverService ? dropAddress : null,
+        user_coords: userCoords,
+        driver_booking_mode: isDriverService ? driverBookingMode : null,
+        car_seater_type: isDriverService ? carSeaterType : null,
+        car_seater_label: isDriverService
+          ? (carSeaterType === '5_seater'
+              ? (driverBookingMode === 'car_with_driver' ? '5 Seater AC Sedan (Swift Dzire / Etios)' : '5 Seater Car (Hatchback/Sedan)')
+              : (driverBookingMode === 'car_with_driver' ? '7 Seater SUV / MUV (Ertiga / Innova)' : '7 Seater SUV / MUV'))
+          : null,
+        trip_type: isDriverService ? tripType : null,
+        transmission: isDriverService && driverBookingMode === 'driver_only' ? transmissionType : null,
+        landmark,
+        trade_subtype: isDriverService
+          ? (driverBookingMode === 'car_with_driver'
+              ? `Car + Driver (${carSeaterType === '5_seater' ? '5 Seater AC Sedan' : '7 Seater SUV/MUV'})`
+              : `Driver Only (${carSeaterType === '5_seater' ? '5 Seater' : '7 Seater SUV'} • ${transmissionType})`)
+          : tradeSubtype,
+        trade_scope: isDriverService ? tripType : tradeScope2,
+        trade_details: isDriverService
+          ? (driverBookingMode === 'car_with_driver'
+              ? `Commercial AC Cab (${carSeaterType === '5_seater' ? '5 Seater' : '7 Seater'}) with Fuel & Toll`
+              : `Customer Vehicle (${carSeaterType === '5_seater' ? '5 Seater' : '7 Seater SUV'})`)
+          : tradeScope3,
+        description: compiledNotes,
+        photo: mediaAttachments.find(m => m.type === 'photo')?.uri || pickedImage,
+        video_clip: mediaAttachments.find(m => m.type === 'video') || null,
+        voice_note: voiceNote,
+        attachments: [
+          ...mediaAttachments,
+          ...(voiceNote ? [voiceNote] : [])
+        ],
+        booking_type: type,
+        scheduled_date: type === 'scheduled' ? selectedDate : null,
+        scheduled_time: type === 'scheduled' ? selectedTime : null,
+        base_amount: baseRate,
+        emergency_surge: emergencySurge,
+        discount_applied: welcomeDiscount,
+        total_amount: finalPayable,
+        payer: {
+          name: payerName.trim() || user?.name || 'International Customer',
+          country: payerCountry.trim() || 'United States'
+        }
+      };
+
+      // 1. Save complete booking draft to AsyncStorage before redirecting
+      await AsyncStorage.setItem('@uniserv_paypal_booking_draft', JSON.stringify({
+        ...draftBookingRecord,
+        bookingRecord: draftBookingRecord,
+        status: 'PENDING_CREATE',
+        createdAt: new Date().toISOString()
+      }));
+
+      // 2. Call server POST /api/orders/create with strictly the whitelisted fields
+      // Server owns pricing & calculations; client never sends rupee amounts
+      const response = await fetch(`${API_BASE_URL}/api/orders/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          bookingInput: {
+            service_id: service?.id || 's1',
+            booking_type: type === 'emergency' ? 'emergency' : (type === 'scheduled' ? 'scheduled' : 'normal'),
+            distance_km: 5.0,
+            first_time: isFirstTimeUser
+          },
+          payer: {
+            name: payerName.trim() || user?.name || 'International Customer',
+            country: payerCountry.trim() || 'United States'
+          }
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || `Order creation failed (${data.error || response.status})`);
+      }
+
+      // 3. Update draft with orderId, bookingId, and ceiling hold
+      await AsyncStorage.setItem('@uniserv_paypal_booking_draft', JSON.stringify({
+        ...draftBookingRecord,
+        bookingRecord: draftBookingRecord,
+        bookingId: data.bookingId,
+        orderId: data.orderId,
+        mode: data.mode,
+        authorizedAmountUsd: data.authorizedAmountUsd,
+        estimateAmountUsd: data.estimateAmountUsd,
+        status: 'PENDING_APPROVAL'
+      }));
+
+      // 4. Redirect to PayPal approval URL in the same tab
+      if (typeof window !== 'undefined' && data.approvalUrl) {
+        window.location.href = data.approvalUrl;
+      }
+    } catch (err) {
+      console.error('PayPal booking error:', err);
+      const isUnreachable = err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || err.message?.includes('network');
+      Alert.alert(
+        'Payment Notice',
+        isUnreachable
+          ? 'Payment server not reachable. Please ensure the UniServ API server is running on port 5000.'
+          : (err.message || 'Payment server not reachable')
+      );
+    } finally {
+      setIsPayPalSubmitting(false);
+    }
+  };
 
   const selectedScaleObj = localizedBulkConfig.scales[selectedScaleIndex] || localizedBulkConfig.scales[0];
   const selectedMaterialObj = localizedBulkConfig.materials[selectedMaterialIndex] || localizedBulkConfig.materials[0];
@@ -1433,6 +1609,117 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
           </View>
         )}
 
+        {/* PayPal Cancellation Notice Banner */}
+        {cancelNotice && (
+          <View style={styles.paypalCancelBanner}>
+            <Ionicons name="information-circle" size={18} color="#0070BA" />
+            <Text style={styles.paypalCancelBannerText}>
+              PayPal sandbox authorization hold was cancelled. Your booking draft has been restored.
+            </Text>
+            <TouchableOpacity onPress={() => setCancelNotice(false)} style={{ marginLeft: 6 }}>
+              <Ionicons name="close" size={16} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Web-Only Payment Mode Selection (Amendment 7 & 8) */}
+        {isWeb && scaleMode !== 'bulk' && (
+          <View style={styles.paymentMethodCard}>
+            <Text style={styles.paymentMethodHeading}>Select Payment Mode</Text>
+
+            <View style={styles.paymentOptionsRow}>
+              <TouchableOpacity
+                style={[styles.paymentOptionTab, paymentMode === 'standard' && styles.paymentOptionTabActive]}
+                onPress={() => setPaymentMode('standard')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="wallet-outline"
+                  size={18}
+                  color={paymentMode === 'standard' ? colors.primary : colors.textSecondary}
+                />
+                <Text
+                  style={[styles.paymentOptionLabel, paymentMode === 'standard' && styles.paymentOptionLabelActive]}
+                >
+                  Domestic Pay (₹ INR)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.paymentOptionTab, paymentMode === 'paypal' && styles.paymentOptionTabActive]}
+                onPress={() => setPaymentMode('paypal')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="logo-paypal"
+                  size={18}
+                  color={paymentMode === 'paypal' ? '#0070BA' : colors.textSecondary}
+                />
+                <Text
+                  style={[styles.paymentOptionLabel, paymentMode === 'paypal' && styles.paymentOptionLabelActive]}
+                >
+                  Pay from abroad (USD)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {paymentMode === 'paypal' && (
+              <View style={styles.paypalDetailsBox}>
+                <View style={styles.paypalBadgeHeader}>
+                  <Ionicons name="shield-checkmark" size={15} color="#0070BA" />
+                  <Text style={styles.paypalBadgeHeaderText}>
+                    Pay from abroad via PayPal sandbox (USD)
+                  </Text>
+                </View>
+
+                <Text style={styles.paypalInputLabel}>Payer Full Name</Text>
+                <TextInput
+                  style={styles.paypalTextInput}
+                  value={payerName}
+                  onChangeText={setPayerName}
+                  placeholder="e.g. Priya Sharma"
+                  placeholderTextColor="#94A3B8"
+                />
+
+                <Text style={[styles.paypalInputLabel, { marginTop: 8 }]}>Payer Country / Residence</Text>
+                <TextInput
+                  style={styles.paypalTextInput}
+                  value={payerCountry}
+                  onChangeText={setPayerCountry}
+                  placeholder="e.g. United States"
+                  placeholderTextColor="#94A3B8"
+                />
+
+                <View style={styles.paypalSummaryRow}>
+                  <Text style={styles.paypalSummaryKey}>Estimated Bill:</Text>
+                  <Text style={styles.paypalSummaryVal}>${estimateUsdStr} USD</Text>
+                </View>
+
+                <View style={styles.paypalSummaryRow}>
+                  <Text style={styles.paypalSummaryKey}>Pre-Authorization Hold (Ceiling):</Text>
+                  <Text style={[styles.paypalSummaryVal, { color: '#0070BA', fontWeight: '800' }]}>
+                    ${ceilingUsdStr} USD
+                  </Text>
+                </View>
+
+                <View style={styles.paypalSummaryRow}>
+                  <Text style={styles.paypalSummaryKey}>Domestic Benchmark:</Text>
+                  <Text style={styles.paypalSummaryVal}>
+                    ₹{finalPayable}{' '}
+                    <Text style={{ fontSize: 10, color: '#64748B' }}>
+                      (sandbox demo rate: 1 USD = 85 INR)
+                    </Text>
+                  </Text>
+                </View>
+
+                <Text style={styles.paypalHoldNotice}>
+                  A PayPal sandbox authorization hold will be placed with a 25% contingency ceiling. You will only be billed the actual verified total upon completion OTP.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Assurance Banner */}
         <View style={styles.assuranceFooterCard}>
           <Ionicons name="shield-checkmark" size={20} color={colors.success} />
@@ -1494,6 +1781,24 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
               </Text>
             </TouchableOpacity>
           </View>
+        ) : paymentMode === 'paypal' && isWeb ? (
+          <TouchableOpacity
+            style={[styles.findWorkerBtn, { backgroundColor: '#0070BA' }]}
+            onPress={handlePayPalBooking}
+            activeOpacity={0.85}
+            disabled={isPayPalSubmitting}
+          >
+            {isPayPalSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="logo-paypal" size={18} color="#FFFFFF" />
+                <Text style={styles.findWorkerBtnText}>
+                  Authorize with PayPal Sandbox • ${ceilingUsdStr} USD
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.findWorkerBtn} onPress={handleFindWorker} activeOpacity={0.85}>
             <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
@@ -1524,6 +1829,123 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.border
+  },
+  paypalCancelBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14
+  },
+  paypalCancelBannerText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E40AF',
+    marginLeft: 8
+  },
+  paymentMethodCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  paymentMethodHeading: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginBottom: 10
+  },
+  paymentOptionsRow: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  paymentOptionTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: colors.background,
+    borderWidth: 1.5,
+    borderColor: colors.border
+  },
+  paymentOptionTabActive: {
+    borderColor: colors.primary,
+    backgroundColor: '#EFF6FF'
+  },
+  paymentOptionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginLeft: 6
+  },
+  paymentOptionLabelActive: {
+    color: colors.primary
+  },
+  paypalDetailsBox: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  paypalBadgeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  paypalBadgeHeaderText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0070BA',
+    marginLeft: 6
+  },
+  paypalInputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 4
+  },
+  paypalTextInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: colors.textPrimary
+  },
+  paypalSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8
+  },
+  paypalSummaryKey: {
+    fontSize: 12,
+    color: colors.textSecondary
+  },
+  paypalSummaryVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary
+  },
+  paypalHoldNotice: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 10,
+    lineHeight: 14,
+    fontStyle: 'italic'
   },
   scaleHeading: {
     fontSize: 12,

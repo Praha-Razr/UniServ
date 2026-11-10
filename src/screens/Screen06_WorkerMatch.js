@@ -142,6 +142,46 @@ export const Screen06_WorkerMatch = ({ route, navigation }) => {
               </Text>
             </View>
 
+            {/* PayPal Sandbox Authorization Hold Banner (Amendment 7 & 8) */}
+            {activeBooking?.paypal_authorization_id && (
+              <View style={styles.paypalAuthCard}>
+                <View style={styles.paypalAuthHeader}>
+                  <Ionicons name="card" size={20} color="#0070BA" />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.paypalAuthBadgeTitle}>
+                      {activeBooking?.paypal_mode === 'SIMULATED'
+                        ? 'PAYPAL SIMULATED AUTHORIZATION HOLD (DEMO)'
+                        : 'PAYPAL SANDBOX AUTHORIZATION HOLD'}
+                    </Text>
+                    <Text style={styles.paypalAuthIdText}>
+                      Auth ID: {activeBooking.paypal_authorization_id}
+                    </Text>
+                  </View>
+                  <View style={styles.paypalStatusPill}>
+                    <Text style={styles.paypalStatusPillText}>HELD IN SANDBOX</Text>
+                  </View>
+                </View>
+                <View style={styles.paypalAuthDivider} />
+                <View style={styles.paypalAuthDetailsRow}>
+                  <Text style={styles.paypalAuthDetailText}>
+                    Authorized Ceiling:{' '}
+                    <Text style={{ fontWeight: '800', color: '#0F172A' }}>
+                      ${activeBooking.paypal_authorized_usd || '4.40'} USD
+                    </Text>
+                  </Text>
+                  <Text style={styles.paypalAuthDetailText}>
+                    Payer:{' '}
+                    <Text style={{ fontWeight: '700', color: '#0F172A' }}>
+                      {activeBooking.paypal_payer?.name || user?.name || 'Customer'}
+                    </Text>
+                  </Text>
+                </View>
+                <Text style={styles.paypalAuthSubnote}>
+                  Pre-authorization hold placed via PayPal sandbox. Settlement capture occurs automatically upon job completion OTP verification.
+                </Text>
+              </View>
+            )}
+
             {/* Bulk Project Milestone Header Card if Bulk */}
             {activeBooking?.is_bulk_project && (
               <View style={styles.bulkMatchCard}>
@@ -438,6 +478,63 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 2
+  },
+  paypalAuthCard: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#BAE6FD',
+    padding: 14,
+    marginBottom: 16
+  },
+  paypalAuthHeader: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  paypalAuthBadgeTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#0369A1',
+    letterSpacing: 0.5
+  },
+  paypalAuthIdText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0C4A6E',
+    marginTop: 2
+  },
+  paypalStatusPill: {
+    backgroundColor: '#0070BA',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  },
+  paypalStatusPillText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5
+  },
+  paypalAuthDivider: {
+    height: 1,
+    backgroundColor: '#BAE6FD',
+    marginVertical: 10
+  },
+  paypalAuthDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  paypalAuthDetailText: {
+    fontSize: 11,
+    color: '#475569'
+  },
+  paypalAuthSubnote: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 8,
+    lineHeight: 14,
+    fontStyle: 'italic'
   },
   guaranteeCard: {
     flexDirection: 'row',

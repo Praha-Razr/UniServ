@@ -66,9 +66,19 @@ export const UserProvider = ({ children }) => {
         setUsersDb(currentDb);
 
         // 3. For prototype evaluation and clear demonstration, always start at the Login screen on app load
-        // Clear any stale persistent login flag so reviewer always experiences the proper splash and login flow
-        await AsyncStorage.removeItem('@uniserv_is_logged_in');
-        setIsLoggedIn(false);
+        // EXCEPT when the user is returning from PayPal sandbox checkout (token or cancel in URL)
+        const isReturningFromPayPal = typeof window !== 'undefined' && window.location && (
+          window.location.search.includes('paypal_return=true') ||
+          window.location.search.includes('paypal_cancel=true') ||
+          window.location.search.includes('token=')
+        );
+
+        if (isReturningFromPayPal) {
+          setIsLoggedIn(true);
+        } else {
+          await AsyncStorage.removeItem('@uniserv_is_logged_in');
+          setIsLoggedIn(false);
+        }
       } catch (e) {
         console.error('Error loading stored user preferences:', e);
       } finally {

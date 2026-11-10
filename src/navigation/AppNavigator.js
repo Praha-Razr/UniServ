@@ -1,8 +1,11 @@
-import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../context/UserContext';
+import { useBooking } from '../context/BookingContext';
+import { API_BASE_URL } from '../config/api';
 import { colors } from '../theme/colors';
 
 // Screens
@@ -34,9 +37,170 @@ const Stack = createNativeStackNavigator();
 
 export const AppNavigator = () => {
   const { isLoggedIn, isLoading, user } = useUser();
+  const { setActiveBooking } = useBooking();
 
-  // Initial Loading Splash Screen
-  if (isLoading) {
+  const [payPalProcessing, setPayPalProcessing] = useState(() => {
+    if (typeof window !== 'undefined' && window.location) {
+      const search = window.location.search || '';
+      return (
+        search.includes('paypal_return=true') ||
+        search.includes('paypal_cancel=true') ||
+        (search.includes('token=') && search.includes('PayerID='))
+      );
+    }
+    return false;
+  });
+  const [payPalStatusText, setPayPalStatusText] = useState('Verifying PayPal Sandbox Authorization Hold...');
+  const [targetRoute, setTargetRoute] = useState(null);
+  const [targetParams, setTargetParams] = useState(null);
+
+  // Handle return from PayPal sandbox before navigation renders
+  useEffect(() => {
+    if (!payPalProcessing) return;
+
+    const resolvePayPal = async () => {
+      try {
+        const search = window.location.search || '';
+        const params = new URLSearchParams(search);
+        const isCancel = params.get('paypal_cancel') === 'true' || params.get('cancel') === 'true';
+        const isReturn = params.get('paypal_return') === 'true' || (params.get('token') && params.get('PayerID'));
+        const token = params.get('token');
+        const payerId = params.get('PayerID');
+        const bookingId = params.get('booking_id');
+
+        const rawDraft = await AsyncStorage.getItem('@uniserv_paypal_booking_draft');
+        let draft = null;
+        try {
+          draft = rawDraft ? JSON.parse(rawDraft) : null;
+        } catch (e) {}
+
+        // CASE 1: BUYER CANCELLED ON PAYPAL
+        if (isCancel) {
+          if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          if (draft) {
+            await AsyncStorage.setItem('@uniserv_paypal_cancel_notice', 'true');
+            setTargetRoute('BookingForm');
+            setTargetParams({
+              service: draft.service,
+              bookingType: draft.booking_type,
+              restoredDraft: draft
+            });
+          } else {
+            setTargetRoute('Home');
+          }
+          setPayPalProcessing(false);
+          return;
+        }
+
+        // CASE 2: BUYER APPROVED ON PAYPAL
+        if (isReturn) {
+          // Double-auth prevention: if page was refreshed after return and already authorized
+          if (draft && draft.status === 'AUTHORIZED' && draft.paypal_authorization_id) {
+            if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            if (draft.bookingRecord) {
+              setActiveBooking(draft.bookingRecord);
+            }
+            setTargetRoute('WorkerMatch');
+            setTargetParams({
+              service: draft.service,
+              bookingType: draft.booking_type
+            });
+            setPayPalProcessing(false);
+            return;
+          }
+
+          setPayPalStatusText('Authorizing PayPal sandbox payment hold with settlement engine...');
+          const targetOrderId = token || draft?.orderId;
+          const targetBookingId = bookingId || draft?.bookingId;
+
+          const res = await fetch(`${API_BASE_URL}/api/orders/authorize`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              orderId: targetOrderId,
+              bookingId: targetBookingId,
+              payerId: payerId || null
+            })
+          });
+
+          const data = await res.json();
+
+          // Clean URL params immediately
+          if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+
+          if (res.ok && data.success) {
+            const bookingRecord = {
+              ...(draft?.bookingRecord || draft || {}),
+              booking_id: data.bookingId || targetBookingId,
+              payment_method: 'PAYPAL_SANDBOX',
+              paypal_order_id: data.orderId || targetOrderId,
+              paypal_authorization_id: data.authorizationId,
+              paypal_mode: data.mode || 'REAL_SANDBOX',
+              paypal_status: 'AUTHORIZED',
+              paypal_authorized_usd: draft?.authorizedAmountUsd || '4.40',
+              paypal_payer: draft?.payer || null,
+              status: 'Booking Confirmed',
+              statusIndex: 0
+            };
+
+            // Save updated draft to prevent re-auth on subsequent refresh
+            await AsyncStorage.setItem('@uniserv_paypal_booking_draft', JSON.stringify({
+              ...draft,
+              status: 'AUTHORIZED',
+              paypal_authorization_id: data.authorizationId,
+              bookingRecord
+            }));
+
+            setActiveBooking(bookingRecord);
+            setTargetRoute('WorkerMatch');
+            setTargetParams({
+              service: bookingRecord.service,
+              bookingType: bookingRecord.booking_type
+            });
+          } else {
+            // Handle PayPal errors (ORDER_NOT_APPROVED, INSTRUMENT_DECLINED, etc.)
+            const errMsg = data.message || 'PayPal sandbox authorization failed.';
+            const debugId = data.debugId || 'none';
+            Alert.alert(
+              'PayPal Authorization Notice',
+              `${errMsg}\n(Debug ID: ${debugId})`
+            );
+            setTargetRoute('BookingForm');
+            setTargetParams({
+              service: draft?.service,
+              bookingType: draft?.booking_type,
+              restoredDraft: draft
+            });
+          }
+        }
+      } catch (err) {
+        console.error('PayPal return resolution error:', err);
+        Alert.alert(
+          'Payment Notice',
+          'Payment server not reachable. Please ensure the UniServ API server is running on port 5000.'
+        );
+        if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        setTargetRoute('BookingForm');
+      } finally {
+        setPayPalProcessing(false);
+      }
+    };
+
+    resolvePayPal();
+  }, [payPalProcessing]);
+
+  // Initial Loading Splash Screen or Return Processing
+  if (isLoading || payPalProcessing) {
     return (
       <View style={styles.splashContainer}>
         <View style={styles.splashIconCircle}>
@@ -46,7 +210,9 @@ export const AppNavigator = () => {
         <Text style={styles.splashTitle}>UniServ</Text>
         <Text style={styles.splashSub}>Independent Prototype • Sandbox Payments Only</Text>
         <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 24 }} />
-        <Text style={styles.splashStatusText}>Initializing Cooperative Platform & Sandbox Services...</Text>
+        <Text style={styles.splashStatusText}>
+          {payPalProcessing ? payPalStatusText : 'Initializing Cooperative Platform & Sandbox Services...'}
+        </Text>
       </View>
     );
   }
@@ -55,7 +221,7 @@ export const AppNavigator = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="OTPLogin"
+      initialRouteName={targetRoute || (isFullyRegisteredAndLoggedIn ? 'MainTabs' : 'OTPLogin')}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right'
@@ -83,9 +249,20 @@ export const AppNavigator = () => {
           <Stack.Screen name="Community" component={Screen18_CommunityScreen} />
 
           {/* Service Request & Matching Flow */}
-          <Stack.Screen name="ServiceDetail" component={Screen04_ServiceDetail} />
-          <Stack.Screen name="BookingForm" component={Screen05_BookingForm} />
-          <Stack.Screen name="WorkerMatch" component={Screen06_WorkerMatch} />
+          <Stack.Screen
+            name="ServiceDetail"
+            component={Screen04_ServiceDetail}
+          />
+          <Stack.Screen
+            name="BookingForm"
+            component={Screen05_BookingForm}
+            initialParams={targetRoute === 'BookingForm' ? targetParams : undefined}
+          />
+          <Stack.Screen
+            name="WorkerMatch"
+            component={Screen06_WorkerMatch}
+            initialParams={targetRoute === 'WorkerMatch' ? targetParams : undefined}
+          />
           <Stack.Screen name="NoWorkerAvailable" component={Screen15_NoWorkerAvailable} />
 
           {/* Live Tracking & Execution Flow */}

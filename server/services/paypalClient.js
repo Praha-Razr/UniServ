@@ -1,0 +1,270 @@
+/**
+ * ============================================================================
+ * UniServ PayPal API Client (Sandbox Plain Fetch)
+ * ============================================================================
+ * Communicates with PayPal v2 Checkout API via plain native fetch.
+ * 
+ * SECURITY RULES:
+ * - Never prints, logs, or transmits client credentials or access tokens.
+ * - Enforces idempotency via PayPal-Request-Id.
+ * - Handles token caching with a 60-second safety expiry margin.
+ * - If sandbox credentials are not configured, gracefully falls back to SIMULATED mode.
+ * ============================================================================
+ */
+
+const SANDBOX_BASE_URL = 'https://api-m.sandbox.paypal.com';
+
+let cachedToken = null;
+let tokenExpiresAt = 0;
+
+/**
+ * Checks whether valid sandbox credentials exist in the environment.
+ * @returns {boolean}
+ */
+function hasValidCredentials() {
+  const env = (process.env.PAYPAL_ENVIRONMENT || '').trim();
+  const clientId = (process.env.PAYPAL_CLIENT_ID || '').trim();
+  const secret = (process.env.PAYPAL_CLIENT_SECRET || '').trim();
+  return env === 'sandbox' && clientId.length > 0 && secret.length > 0;
+}
+
+/**
+ * Obtains an OAuth 2.0 access token with in-memory caching.
+ * @returns {Promise<string>} Bearer access token
+ */
+async function getAccessToken() {
+  if (!hasValidCredentials()) {
+    throw new Error('PayPal Sandbox credentials missing or invalid in server/.env');
+  }
+
+  const now = Date.now();
+  if (cachedToken && now < tokenExpiresAt - 60000) {
+    return cachedToken;
+  }
+
+  const clientId = process.env.PAYPAL_CLIENT_ID.trim();
+  const secret = process.env.PAYPAL_CLIENT_SECRET.trim();
+  const authHeader = `Basic ${Buffer.from(`${clientId}:${secret}`).toString('base64')}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`${SANDBOX_BASE_URL}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Language': 'en_US',
+        'Authorization': authHeader,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials',
+      signal: controller.signal
+    });
+
+    const debugId = res.headers.get('paypal-debug-id') || 'none';
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {}
+
+    if (!res.ok || !data.access_token) {
+      const errorName = data.error || data.name || `HTTP_${res.status}`;
+      const finalDebugId = data.debug_id || debugId;
+      const err = new Error(`PayPal OAuth Failed: ${errorName}`);
+      err.paypalError = errorName;
+      err.debugId = finalDebugId;
+      throw err;
+    }
+
+    cachedToken = data.access_token;
+    tokenExpiresAt = now + ((data.expires_in || 3600) * 1000);
+    return cachedToken;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Creates an order in PayPal Sandbox with intent = AUTHORIZE.
+ * 
+ * @param {object} params
+ * @param {string} params.bookingId
+ * @param {number} params.authorizedCents - Integer ceiling cents
+ * @param {string} params.returnUrl
+ * @param {string} params.cancelUrl
+ * @param {string} [params.description]
+ * @returns {Promise<{ orderId: string, approvalUrl: string, mode: string }>}
+ */
+async function createOrder({ bookingId, authorizedCents, returnUrl, cancelUrl, description }) {
+  if (!hasValidCredentials()) {
+    // Graceful fallback: SIMULATED mode
+    const simulatedOrderId = `SIM_ORD_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const simulatedApprovalUrl = `${returnUrl}&token=${simulatedOrderId}&PayerID=SIM_PAYER_12345`;
+    return {
+      orderId: simulatedOrderId,
+      approvalUrl: simulatedApprovalUrl,
+      mode: 'SIMULATED'
+    };
+  }
+
+  const token = await getAccessToken();
+  const amountUsd = (authorizedCents / 100).toFixed(2);
+
+  const payload = {
+    intent: 'AUTHORIZE',
+    purchase_units: [
+      {
+        reference_id: bookingId,
+        description: description || 'UniServ Cooperative Service Pre-Authorization',
+        amount: {
+          currency_code: 'USD',
+          value: amountUsd
+        }
+      }
+    ],
+    application_context: {
+      brand_name: 'UniServ Cooperative',
+      locale: 'en-US',
+      landing_page: 'NO_PREFERENCE',
+      user_action: 'CONTINUE',
+      return_url: returnUrl,
+      cancel_url: cancelUrl
+    }
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`${SANDBOX_BASE_URL}/v2/checkout/orders`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': `create_${bookingId}`
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    const debugId = res.headers.get('paypal-debug-id') || 'none';
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {}
+
+    if (!res.ok || !data.id) {
+      const errorName = data.name || data.error || `HTTP_${res.status}`;
+      const finalDebugId = data.debug_id || debugId;
+      const err = new Error(`PayPal Order Creation Failed: ${errorName}`);
+      err.paypalError = errorName;
+      err.debugId = finalDebugId;
+      throw err;
+    }
+
+    // Handle both 'approve' and 'payer-action' links
+    const links = data.links || [];
+    const approvalLinkObj = links.find((l) => l.rel === 'approve' || l.rel === 'payer-action');
+    const approvalUrl = approvalLinkObj ? approvalLinkObj.href : null;
+
+    if (!approvalUrl) {
+      const err = new Error('PayPal Order response missing approval link');
+      err.paypalError = 'MISSING_APPROVAL_URL';
+      err.debugId = data.debug_id || debugId;
+      throw err;
+    }
+
+    return {
+      orderId: data.id,
+      approvalUrl,
+      mode: 'REAL_SANDBOX'
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Authorizes a previously created and buyer-approved PayPal order.
+ * 
+ * @param {string} orderId
+ * @returns {Promise<{ authorizationId: string, status: string, mode: string }>}
+ */
+async function authorizeOrder(orderId) {
+  if (orderId && orderId.startsWith('SIM_ORD_')) {
+    // Graceful fallback for SIMULATED mode
+    return {
+      authorizationId: `SIM_AUTH_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      status: 'CREATED',
+      mode: 'SIMULATED'
+    };
+  }
+
+  if (!hasValidCredentials()) {
+    throw new Error('PayPal credentials missing for order authorization');
+  }
+
+  const token = await getAccessToken();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`${SANDBOX_BASE_URL}/v2/checkout/orders/${encodeURIComponent(orderId)}/authorize`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': `auth_${orderId}`
+      },
+      body: '{}',
+      signal: controller.signal
+    });
+
+    const debugId = res.headers.get('paypal-debug-id') || 'none';
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {}
+
+    if (!res.ok) {
+      const errorName = data.name || data.error || `HTTP_${res.status}`;
+      const finalDebugId = data.debug_id || debugId;
+      const err = new Error(`PayPal Authorization Failed: ${errorName}`);
+      err.paypalError = errorName;
+      err.debugId = finalDebugId;
+      throw err;
+    }
+
+    // Extract authorization details
+    const purchaseUnit = (data.purchase_units && data.purchase_units[0]) || {};
+    const payments = purchaseUnit.payments || {};
+    const authorizations = payments.authorizations || [];
+    const primaryAuth = authorizations[0];
+
+    if (!primaryAuth || !primaryAuth.id) {
+      const err = new Error('No authorization object returned by PayPal');
+      err.paypalError = 'MISSING_AUTHORIZATION';
+      err.debugId = data.debug_id || debugId;
+      throw err;
+    }
+
+    return {
+      authorizationId: primaryAuth.id,
+      status: primaryAuth.status || 'CREATED',
+      mode: 'REAL_SANDBOX'
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+module.exports = {
+  hasValidCredentials,
+  getAccessToken,
+  createOrder,
+  authorizeOrder
+};
