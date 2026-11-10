@@ -246,9 +246,9 @@ export const TRADE_QUESTIONS_TRANSLATIONS = {
       hi: "3. हार्डवेयर सोर्सिंग और ब्रांड"
     },
     q3Chips: {
-      en: ['Customer Supplies Hardware', 'ISI Ebco 3D Clip-on Hinges', 'German Hettich / Hafele Fitting'],
-      ta: ['வாடிக்கையாளர் ஹார்டுவேர் வழங்குகிறார்', 'ISI எப்கோ 3D ஹிஞ்ச்கள்', 'ஜெர்மன் ஹெட்டிக் / ஹேஃபெலே பிட்டிங்'],
-      hi: ['ग्राहक हार्डवेयर प्रदान करेगा', 'ISI एबको 3D क्लिप-ऑन कब्जे', 'जर्मन हेटिच / हेफेल फिटिंग']
+      en: ['Customer Supplies Hardware', 'Quality-Checked Ebco 3D Clip-on Hinges', 'German Hettich / Hafele Fitting'],
+      ta: ['வாடிக்கையாளர் ஹார்டுவேர் வழங்குகிறார்', 'தரப்பரிசோதிக்கப்பட்ட எப்கோ 3D ஹிஞ்ச்கள்', 'ஜெர்மன் ஹெட்டிக் / ஹேஃபெலே பிட்டிங்'],
+      hi: ['ग्राहक हार्डवेयर प्रदान करेगा', 'गुणवत्ता-जांचे गए एबको 3D क्लिप-ऑन कब्जे', 'जर्मन हेटिच / हेफेल फिटिंग']
     }
   },
 
@@ -624,7 +624,7 @@ export const BULK_CONFIG_TRANSLATIONS = {
     ],
     materials: [
       { id: 'm0', label: { en: 'Labour Only (Plumbing Tools Only)', ta: 'பணியாளர் மட்டும் (கருவிகள் மட்டும்)', hi: 'केवल मजदूरी (केवल प्लंबिंग उपकरण)' }, sub: { en: 'Customer provides all CPVC pipes, diverters & valves', ta: 'வாடிக்கையாளர் அனைத்து குழாய்களையும் வழங்குகிறார்', hi: 'ग्राहक सभी सीपीवीसी पाइप और वाल्व प्रदान करेगा' } },
-      { id: 'm1', label: { en: 'Labour + Standard ISI CPVC & Brass Valves', ta: 'பணியாளர் + ISI CPVC & பித்தளை வால்வுகள்', hi: 'मजदूरी + मानक ISI CPVC और ब्रास वाल्व' }, sub: { en: 'Co-op supplies Astral/Ashirvad SDR-11 CPVC pipes', ta: 'கூட்டுறவு சங்கம் ஆஸ்ட்ரல்/ஆஷிர்வாட் CPVC குழாய்களை வழங்குகிறது', hi: 'सहकारी समिति एस्ट्रल/आशीर्वाद CPVC पाइप प्रदान करती है' } },
+      { id: 'm1', label: { en: 'Labour + Quality-Checked CPVC & Brass Valves', ta: 'பணியாளர் + தரப்பரிசோதிக்கப்பட்ட CPVC & பித்தளை வால்வுகள்', hi: 'मजदूरी + गुणवत्ता-जांचे गए CPVC और ब्रास वाल्व' }, sub: { en: 'Co-op supplies Astral/Ashirvad SDR-11 CPVC pipes', ta: 'கூட்டுறவு சங்கம் ஆஸ்ட்ரல்/ஆஷிர்வாட் CPVC குழாய்களை வழங்குகிறது', hi: 'सहकारी समिति एस्ट्रल/आशीर्वाद CPVC पाइप प्रदान करती है' } },
       { id: 'm2', label: { en: 'Labour + Premium Concealed Diverter Grid', ta: 'பணியாளர் + பிரீமியம் மறைமுக டைவர்ட்டர் அமைப்பு', hi: 'मजदूरी + प्रीमियम कंसील्ड डायवर्टर ग्रिड' }, sub: { en: 'Thermostatic concealed diverters, multi-flow showers', ta: 'தெர்மோஸ்டாடிக் மறைமுக டைவர்ட்டர்கள், மல்டி-ப்ளோ ஷவர்கள்', hi: 'थर्मोस्टेटिक कंसील्ड डायवर्टर, मल्टी-फ्लो शॉवर' } }
     ]
   },
@@ -663,7 +663,7 @@ export const BULK_CONFIG_TRANSLATIONS = {
     ],
     materials: [
       { id: 'm0', label: { en: 'Labour Only (Precision Tools Only)', ta: 'பணியாளர் மட்டும் (கருவிகள் மட்டும்)', hi: 'केवल मजदूरी (केवल उपकरण)' }, sub: { en: 'Customer provides all hinges, slides & locks', ta: 'வாடிக்கையாளர் அனைத்து பூட்டுகள் & ஹிஞ்ச்களை வழங்குகிறார்', hi: 'ग्राहक सभी कब्जे, स्लाइड और ताले प्रदान करेगा' } },
-      { id: 'm1', label: { en: 'Labour + Standard ISI Soft-Close Hardware', ta: 'பணியாளர் + ISI சாப்ட்-க்ளோஸ் ஹார்டுவேர்', hi: 'मजदूरी + मानक ISI सॉफ्ट-क्लोज हार्डवेयर' }, sub: { en: 'Co-op supplies Ebco 3D clip-on soft-close hinges & Godrej locks', ta: 'கூட்டுறவு சங்கம் எப்கோ ஹிஞ்ச்கள் & காத்ரெஜ் பூட்டுகளை வழங்குகிறது', hi: 'सहकारी समिति एबको 3D कब्जे और गोदरेज ताले प्रदान करती है' } },
+      { id: 'm1', label: { en: 'Labour + Quality-Checked Soft-Close Hardware', ta: 'பணியாளர் + தரப்பரிசோதிக்கப்பட்ட சாப்ட்-க்ளோஸ் ஹார்டுவேர்', hi: 'मजदूरी + गुणवत्ता-जांचे गए सॉफ्ट-क्लोज हार्डवेयर' }, sub: { en: 'Co-op supplies Ebco 3D clip-on soft-close hinges & Godrej locks', ta: 'கூட்டுறவு சங்கம் எப்கோ ஹிஞ்ச்கள் & காத்ரெஜ் பூட்டுகளை வழங்குகிறது', hi: 'सहकारी समिति एबको 3D कब्जे और गोदरेज ताले प्रदान करती है' } },
       { id: 'm2', label: { en: 'Labour + Premium German Silent Hardware', ta: 'பணியாளர் + ஜெர்மன் சைலண்ட் ஹார்டுவேர்', hi: 'मजदूरी + प्रीमियम जर्मन साइलेंट हार्डवेयर' }, sub: { en: 'Hettich Sensys silent damping hinges & PU polish', ta: 'ஹெட்டிக் சைலண்ட் ஹிஞ்ச்கள் & PU பாலிஷ்', hi: 'हेटिच सेंसिस साइलेंट डैम्पिंग कब्जे और पीयू पॉलिश' } }
     ]
   },

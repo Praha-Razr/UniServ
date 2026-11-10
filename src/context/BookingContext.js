@@ -368,7 +368,7 @@ export const BookingProvider = ({ children }) => {
         accumulated_work_seconds: Number(current_seconds || 0),
         paused_at: Date.now(),
         part_order: {
-          part_name: part_name || 'ISI Certified Electrical/Appliance Spare Part',
+          part_name: part_name || 'Quality-Checked Electrical/Appliance Spare Part',
           estimated_delivery: estimated_delivery || '1-2 Days / Local Warehouse Transit',
           part_cost: Number(part_cost || 0),
           requested_at: new Date().toISOString()

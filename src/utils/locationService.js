@@ -33,7 +33,7 @@ export const fetchRealDoorstepLocation = () => {
             const stateName = addr.state || 'State';
             const pincode = addr.postcode || '';
             
-            // Derive meaningful landmark like Zomato / Rapido
+            // Derive meaningful landmark (delivery-app style)
             const landmark = addr.amenity || addr.shop || addr.building || addr.office || (addr.road ? `Near ${addr.road}` : 'Opposite Main Road');
             
             // Structured Clean Formatted Address

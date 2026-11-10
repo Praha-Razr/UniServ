@@ -441,7 +441,7 @@ export const Screen07_LiveTracking = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Uber/Rapido Artisan & Vehicle Trust Card */}
+        {/* ride-hailing style Artisan & Vehicle Trust Card */}
         <View style={styles.workerDetailCard}>
           <View style={styles.workerMainRow}>
             <Image

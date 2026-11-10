@@ -27,7 +27,7 @@
     "extra_work": {
       "title": "Heavy-Duty Brass Valve Replacement",
       "amount": 150,
-      "description": "The existing internal valve thread is severely corroded. Requires replacing with an ISI-certified brass fitting to prevent recurring leaks.",
+      "description": "The existing internal valve thread is severely corroded. Requires replacing with a quality-checked brass fitting to prevent recurring leaks.",
       "photo": "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=500&q=80"
     },
     "helper_request": {
@@ -61,7 +61,7 @@
       "Mutual OTP sign-off"
     ],
     "safety_note": "100% adherence to electrical safety protocol. Main MCB will be tripped before handling live load wires.",
-    "trust_note": "Certified by State Electrical Licensing Board & supported by Cooperative Welfare Fund.",
+    "trust_note": "Skill-verified by Cooperative Licensing Desk & supported by Cooperative Welfare Fund.",
     "extra_work": {
       "title": "32A C-Curve MCB & Fire-Retardant Conduit Joint",
       "amount": 220,
@@ -249,7 +249,7 @@
     "extra_work": {
       "title": "Dual-Run Compressor Capacitor & Gas Top-Up",
       "amount": 400,
-      "description": "Faulty starting capacitor caused compressor thermal cutoff. Requires new ISI capacitor replacement and refrigerant top-up.",
+      "description": "Faulty starting capacitor caused compressor thermal cutoff. Requires new quality-checked capacitor replacement and refrigerant top-up.",
       "photo": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&q=80"
     },
     "helper_request": {

@@ -64,7 +64,7 @@ const calculateBearing = (startLat, startLng, endLat, endLng) => {
  * - Real Street Tiles (OpenStreetMap & Satellite Layer toggle)
  * - Real Road-Network Polyline
  * - Live Moving Vehicle with Heading Bearing Angle
- * - Rapido/Uber Speedometer, Milestones & Live ETA HUD
+ * - ride-hailing style Speedometer, Milestones & Live ETA HUD
  * - Pulsing Destination Radar Geofence
  * - Interactive Pan/Zoom & Recenter controls
  */
@@ -421,7 +421,7 @@ export const RealLiveTrackingMap = ({
 
   return (
     <View style={styles.container}>
-      {/* 🧭 Rapido / Uber Turn-by-Turn Navigation Header Ticker */}
+      {/* 🧭 ride-hailing style Turn-by-Turn Navigation Header Ticker */}
       <View style={styles.navigationHeader}>
         <View style={[styles.navIconBox, hasArrived && { backgroundColor: colors.success }]}>
           <Ionicons name={hasArrived ? 'checkmark-circle' : 'navigate'} size={18} color="#FFFFFF" />

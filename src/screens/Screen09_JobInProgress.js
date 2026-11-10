@@ -280,7 +280,7 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
                 <Text style={styles.resumeOtpLabel}>RESUME OTP (SHARE WITH ARTISAN WHEN THEY RETURN WITH PART):</Text>
                 <Text style={styles.resumeOtpCode}>{activeBooking.part_resume_otp}</Text>
                 <Text style={styles.resumeOtpSub}>
-                  Part: {activeBooking.part_order?.part_name || 'ISI Spare Part'} (₹{activeBooking.part_order?.part_cost || 0}) • {activeBooking.part_order?.estimated_delivery || '1-2 Days'}
+                  Part: {activeBooking.part_order?.part_name || 'Quality-Checked Spare Part'} (₹{activeBooking.part_order?.part_cost || 0}) • {activeBooking.part_order?.estimated_delivery || '1-2 Days'}
                 </Text>
                 <TouchableOpacity
                   style={styles.resumeWorkBtn}

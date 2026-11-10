@@ -29,7 +29,7 @@ export const serviceTranslations = {
       safety_note: "Workers carry insulated tools and sanitised equipment. Main water supply will be temporarily turned off during high-pressure line repairs.",
       trust_note: "All plumbers are verified through registered Labour Cooperative Societies and carry active accidental insurance.",
       coop_warranty_title: "Cooperative Assurance (Seva Suraksha)",
-      coop_warranty_desc: "Includes 7-day free rework warranty. Standard rate card fixed by Government Registered Cooperative Society.",
+      coop_warranty_desc: "Includes 7-day free rework warranty. Standard rate card fixed by Registered Cooperative Society.",
       coop_fairwage_title: "Cooperative Fair Wage Guarantee",
       coop_fairwage_desc: "Standardized fair wages fixed by local Labour Cooperative. 80% direct artisan compensation."
     },
@@ -47,14 +47,14 @@ export const serviceTranslations = {
       sample_steps: [
         "Safety checks & power supply isolation",
         "Fault detection using digital multi-meter",
-        "Component repair / ISI replacement",
+        "Component repair / quality-checked replacement",
         "Load test with active appliances",
         "Mutual OTP sign-off"
       ],
       safety_note: "100% adherence to electrical safety protocol. Main MCB will be tripped before handling live load wires.",
-      trust_note: "Certified by State Electrical Licensing Board & supported by Cooperative Welfare Fund.",
+      trust_note: "Skill-verified by Cooperative Licensing Desk & supported by Cooperative Welfare Fund.",
       coop_warranty_title: "Cooperative Assurance (Seva Suraksha)",
-      coop_warranty_desc: "Includes 7-day free rework warranty. Standard rate card fixed by Government Registered Cooperative Society.",
+      coop_warranty_desc: "Includes 7-day free rework warranty. Standard rate card fixed by Registered Cooperative Society.",
       coop_fairwage_title: "Cooperative Fair Wage Guarantee",
       coop_fairwage_desc: "Standardized fair wages fixed by local Labour Cooperative. 80% direct artisan compensation."
     },
@@ -303,7 +303,7 @@ export const serviceTranslations = {
       sample_steps: [
         "பாதுகாப்பு சோதனை & பிரதான மின் இணைப்பை துண்டித்தல்",
         "டிஜிட்டல் மல்டி-மீட்டர் மூலம் கோளாறை துல்லியமாக கண்டறிதல்",
-        "ISI தர உதிரிபாகங்களை கொண்டு பழுதுபார்த்தல்",
+        "தரப்பரிசோதிக்கப்பட்ட உதிரிபாகங்களை கொண்டு பழுதுபார்த்தல்",
         "மின் சாதனங்களை இயக்கி சுமை சோதனை செய்தல்",
         "இருதரப்பு OTP மூலம் பணி நிறைவு உறுதி செய்தல்"
       ],
@@ -559,7 +559,7 @@ export const serviceTranslations = {
       sample_steps: [
         "सुरक्षा जांच एवं मुख्य बिजली आपूर्ति बंद करना",
         "डिजिटल मल्टी-मीटर से खराबी का सटीक पता लगाना",
-        "ISI प्रमाणित घटकों से मरम्मत या प्रतिस्थापन",
+        "गुणवत्ता-जांचे गए घटकों से मरम्मत या प्रतिस्थापन",
         "उपकरणों के साथ लोड परीक्षण",
         "पारस्परिक OTP द्वारा कार्य पूर्णता सत्यापन"
       ],

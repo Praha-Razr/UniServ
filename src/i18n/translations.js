@@ -86,7 +86,7 @@ const baseEnglish = {
   selectLanguageSub: "Choose your language for communication, voice notes, and service tracking.",
   searchAllLanguages: "Search All Indian Regional Languages",
   currentLanguage: "Current",
-  coopWageGuarantee: "Backed by Government Registered Labour Cooperatives. 80% direct artisan wage guarantee.",
+  coopWageGuarantee: "Backed by Registered Labour Cooperatives. 80% direct artisan wage guarantee.",
 
   // Login Screen
   mobileVerification: "Mobile Verification",
@@ -382,8 +382,8 @@ const baseEnglish = {
     tabResidential: "Societies & RWAs",
     institutionalHubTag: "COLLEGES, UNIVERSITIES & CAMPUS BULK HUB",
     institutionalHeroTitle: "Deploy Certified Cooperative Artisan Squads for Campuses",
-    institutionalHeroSub: "Statutory audits, high-capacity water reservoirs, student hostel deep cleans, and multi-artisan maintenance for educational institutes.",
-    statutoryAuditBadge: "AICTE / UGC / STATUTORY AUDIT COMPLIANT",
+    institutionalHeroSub: "Technical audits, high-capacity water reservoirs, student hostel deep cleans, and multi-artisan maintenance for educational institutes.",
+    statutoryAuditBadge: "COOPERATIVE AUDIT & SAFETY COMPLIANT (PROTOTYPE)",
     gatePassReadyBadge: "CAMPUS SECURITY GATE PASS READY",
     selectInstitutionType: "Select Institution Category",
     selectCampusScale: "Select Campus Scale / Infrastructure Size",

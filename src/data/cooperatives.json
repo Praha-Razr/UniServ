@@ -71,7 +71,7 @@
         "icon": "water",
         "base_estimate": "₹7,999 onwards",
         "description": "Deep mechanical sludge extraction, rotary chemical descaling, food-grade antimicrobial disinfection, and multi-stage commercial RO filtration health audit for colleges and student hostels.",
-        "statutory_compliance": "BIS 10500 Drinking Water Hygiene Certified"
+        "statutory_compliance": "Drinking-water hygiene standard (prototype)"
       },
       {
         "id": "inst_2",
@@ -143,7 +143,7 @@
         "name": "Manoj Kumar Verma",
         "role": "Master Contractor & Lead Electrical Supervisor",
         "photo": "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-9481",
+        "kyc_id": "ID-XXXX-9481",
         "coop_verification_no": "DL-COOP-VERIF-2026-88419",
         "trade": "Industrial Electrical & Substation Audits"
       },
@@ -152,7 +152,7 @@
         "name": "Ramesh Chandra",
         "role": "Master Plumber & Pipeline Engineer",
         "photo": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-3829",
+        "kyc_id": "ID-XXXX-3829",
         "coop_verification_no": "DL-COOP-VERIF-2026-55120",
         "trade": "Mega Reservoir & Commercial Hydraulics"
       },
@@ -161,7 +161,7 @@
         "name": "Mohammad Arif",
         "role": "Chief Furniture & Structural Carpenter",
         "photo": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-7164",
+        "kyc_id": "ID-XXXX-7164",
         "coop_verification_no": "DL-COOP-VERIF-2026-99321",
         "trade": "Lecture Hall & Hostel Woodwork"
       },
@@ -170,7 +170,7 @@
         "name": "Sunita Devi",
         "role": "Sanitation Guild Supervisor",
         "photo": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-4412",
+        "kyc_id": "ID-XXXX-4412",
         "coop_verification_no": "DL-COOP-VERIF-2026-22481",
         "trade": "Hostel & Industrial Kitchen Hygiene"
       },
@@ -179,7 +179,7 @@
         "name": "Rajesh Kumar",
         "role": "Surface Coating & Paint Master",
         "photo": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-1954",
+        "kyc_id": "ID-XXXX-1954",
         "coop_verification_no": "DL-COOP-VERIF-2026-77312",
         "trade": "Classroom & Facade Painting"
       },
@@ -188,7 +188,7 @@
         "name": "Vikram Singh",
         "role": "Fleet & Heavy Vehicle Lead Driver",
         "photo": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-8201",
+        "kyc_id": "ID-XXXX-8201",
         "coop_verification_no": "DL-COOP-VERIF-2026-11942",
         "trade": "College Bus & Protocol Convoy"
       }
@@ -266,7 +266,7 @@
         "icon": "water",
         "base_estimate": "₹7,999 onwards",
         "description": "Deep mechanical sludge extraction, rotary chemical descaling, food-grade antimicrobial disinfection, and multi-stage commercial RO filtration health audit for colleges and student hostels.",
-        "statutory_compliance": "BIS 10500 Drinking Water Hygiene Certified"
+        "statutory_compliance": "Drinking-water hygiene standard (prototype)"
       },
       {
         "id": "inst_2",
@@ -338,7 +338,7 @@
         "name": "Sunita Devi",
         "role": "Sanitation Guild Supervisor & Lead Chemist",
         "photo": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-4412",
+        "kyc_id": "ID-XXXX-4412",
         "coop_verification_no": "DL-COOP-VERIF-2026-22481",
         "trade": "Hostel & Industrial Kitchen Hygiene"
       },
@@ -347,7 +347,7 @@
         "name": "Pooja Sharma",
         "role": "Certified Commercial RO & Water Engineer",
         "photo": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-9128",
+        "kyc_id": "ID-XXXX-9128",
         "coop_verification_no": "DL-COOP-VERIF-2026-33918",
         "trade": "Mega Reservoir & Commercial Hydraulics"
       },
@@ -356,7 +356,7 @@
         "name": "Rajesh Meena",
         "role": "Substation Electrical Lead",
         "photo": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-6721",
+        "kyc_id": "ID-XXXX-6721",
         "coop_verification_no": "DL-COOP-VERIF-2026-44019",
         "trade": "Industrial Electrical & Substation Audits"
       },
@@ -365,7 +365,7 @@
         "name": "Kavita Rao",
         "role": "Horticulture & Grounds Master",
         "photo": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-8812",
+        "kyc_id": "ID-XXXX-8812",
         "coop_verification_no": "DL-COOP-VERIF-2026-78190",
         "trade": "Campus Grounds & Tree Safety"
       },
@@ -374,7 +374,7 @@
         "name": "Devendra Kumar",
         "role": "Heavy Fleet Transport Captain",
         "photo": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
-        "kyc_id": "AADHAAR-XXXX-XXXX-5519",
+        "kyc_id": "ID-XXXX-5519",
         "coop_verification_no": "DL-COOP-VERIF-2026-90184",
         "trade": "College Bus & Protocol Convoy"
       }

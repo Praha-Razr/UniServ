@@ -119,7 +119,7 @@ export const Screen04_ServiceDetail = ({ route, navigation }) => {
             <View style={styles.coopAssuranceTextCol}>
               <Text style={styles.coopAssuranceTitle}>{currentService?.coop_warranty_title || t('coopAssurance')}</Text>
               <Text style={styles.coopAssuranceDesc}>
-                {currentService?.coop_warranty_desc || 'Includes 7-day free rework warranty. Standard rate card fixed by Government Registered Cooperative Society.'}
+                {currentService?.coop_warranty_desc || 'Includes 7-day free rework warranty. Standard rate card fixed by Registered Cooperative Society.'}
               </Text>
             </View>
           </View>

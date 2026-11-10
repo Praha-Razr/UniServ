@@ -384,7 +384,7 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
           crewSize = 3; days = 3;
           minCost = isLabourOnly ? 7000 : isPremium ? 24000 : 15000;
           maxCost = isLabourOnly ? 9500 : isPremium ? 32000 : 20000;
-          desc = '2 Bathrooms + Kitchen: Complete repiping with ISI Astral/Ashirvad CPVC & brass valves.';
+          desc = '2 Bathrooms + Kitchen: Complete repiping with quality-checked Astral/Ashirvad CPVC & brass valves.';
         } else if (selectedScaleIndex === 2) {
           crewSize = 5; days = 4;
           minCost = isLabourOnly ? 12000 : isPremium ? 38000 : 25000;

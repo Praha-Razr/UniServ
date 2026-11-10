@@ -167,7 +167,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
       trade_name: activeConfig?.trade_name,
       trade_options: selectedTradeOptions,
       machinery_roster: activeConfig?.machinery_roster || [],
-      statutory_compliance: activeConfig?.statutory_compliance?.code || selectedService.statutory_compliance || 'AICTE / UGC / MSCS Certified',
+      statutory_compliance: activeConfig?.statutory_compliance?.code || selectedService.statutory_compliance || 'Technical Standards (prototype)',
       statutory_details: activeConfig?.statutory_compliance || null,
       squad_composition: activeConfig?.squad_composition || [],
       deliverables: activeConfig?.deliverables || [],
@@ -243,9 +243,9 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
       try {
         const tradeTitle = req.trade_name || activeConfig?.trade_name || 'Multi-Artisan Infrastructure Engineering';
         const complianceObj = req.statutory_details || activeConfig?.statutory_compliance || {
-          code: req.statutory_compliance || 'AICTE / UGC / MSCS Certified',
-          issuing_body: 'Government National Cooperative Federation',
-          audit_report: 'Official Infrastructure Health Audit & Handover Certificate'
+          code: req.statutory_compliance || 'Technical Standards (prototype)',
+          issuing_body: 'Cooperative Standards Oversight (prototype)',
+          audit_report: 'Infrastructure Health Audit & Handover Report (prototype)'
         };
 
         // Render selected parameters
@@ -464,7 +464,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
             </Text>
             <Text style={styles.heroDesc}>
               {activeTab === 'institutional'
-                ? 'Direct government-certified cooperative multi-artisan squads for engineering colleges, campuses, hostels, and hospitals with 3-stage escrow milestones, certified heavy machinery, and statutory compliance.'
+                ? 'Direct cooperative multi-artisan squads for campuses, hostels, and facilities with 3-stage escrow milestones, inspected heavy machinery, and safety compliance (prototype).'
                 : (t('communityHeroDesc') || 'Standardized society pricing with 6-stage mechanized water tank cleaning, FLIR electrical audits, pre-monsoon sewer jetting, and common area buffing.')}
             </Text>
           </View>
@@ -479,7 +479,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
           </Text>
           <Text style={styles.sectionSub}>
             {activeTab === 'institutional'
-              ? 'Multi-State Co-op Societies Act (MSCS) verified contractor guilds with statutory safety accreditation'
+              ? 'Multi-State Co-op Societies Act (MSCS) verified contractor guilds with cooperative safety accreditation'
               : (t('mscsRegisteredContractorGuilds') || 'Multi-State Co-op Societies Act (MSCS) registered contractor guilds')}
           </Text>
         </View>
@@ -550,7 +550,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
           </Text>
           <Text style={styles.sectionSub}>
             {activeTab === 'institutional'
-              ? 'Standardized cooperative quotes with multi-artisan deployment, certified machinery & statutory compliance'
+              ? 'Standardized cooperative quotes with multi-artisan deployment, inspected machinery & safety compliance (prototype)'
               : (t('standardRatesMultiCrew') || 'Standardized cooperative rates with multi-artisan deployment')}
           </Text>
         </View>
@@ -744,7 +744,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
                   <View style={styles.machineryCard}>
                     <View style={styles.machineryHeaderRow}>
                       <Ionicons name="construct" size={16} color={colors.primary} />
-                      <Text style={styles.machineryHeaderTitle}>Certified Heavy Machinery & Equipment Deployed</Text>
+                      <Text style={styles.machineryHeaderTitle}>Inspected Heavy Machinery & Equipment Deployed</Text>
                     </View>
                     <Text style={styles.machineryHeaderSub}>
                       Operated exclusively by trained multi-artisan operators under cooperative safety compliance
@@ -775,7 +775,7 @@ export const Screen18_CommunityScreen = ({ navigation, route }) => {
                   <View style={styles.complianceCard}>
                     <View style={styles.complianceHeaderRow}>
                       <Ionicons name="ribbon" size={16} color={colors.successDark} />
-                      <Text style={styles.complianceHeaderTitle}>Statutory Compliance & Legal Certification</Text>
+                      <Text style={styles.complianceHeaderTitle}>Technical Standards & Safety Compliance (prototype)</Text>
                     </View>
                     <Text style={styles.complianceCodeText}>{activeConfig.statutory_compliance.code}</Text>
                     <View style={styles.complianceDetailsGrid}>

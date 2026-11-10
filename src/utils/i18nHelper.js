@@ -61,7 +61,7 @@ export const getLocalizedService = (service, t, langCode = 'en') => {
     safety_note: locData?.safety_note || service.safety_note,
     trust_note: locData?.trust_note || service.trust_note,
     coop_warranty_title: locData?.coop_warranty_title || 'Cooperative Assurance (Seva Suraksha)',
-    coop_warranty_desc: locData?.coop_warranty_desc || 'Includes 7-day free rework warranty. Standard rate card fixed by Government Registered Cooperative Society.',
+    coop_warranty_desc: locData?.coop_warranty_desc || 'Includes 7-day free rework warranty. Standard rate card fixed by Registered Cooperative Society.',
     coop_fairwage_title: locData?.coop_fairwage_title || 'Cooperative Fair Wage Guarantee',
     coop_fairwage_desc: locData?.coop_fairwage_desc || 'Standardized fair wages fixed by local Labour Cooperative. 80% direct artisan compensation.'
   };

@@ -55,8 +55,8 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
   const departmentTitle = activeBooking?.department_office || 'Campus Maintenance & Estate Wing';
   const officerTitle = activeBooking?.officer_name || 'Dr. R.K. Nair (Estate Officer)';
   const complianceTitle = typeof activeBooking?.statutory_compliance === 'object'
-    ? (activeBooking?.statutory_compliance?.code || 'AICTE / UGC / MSCS Certified')
-    : (activeBooking?.statutory_compliance || 'AICTE / UGC / MSCS Certified');
+    ? (activeBooking?.statutory_compliance?.code || 'Technical Standards (prototype)')
+    : (activeBooking?.statutory_compliance || 'Technical Standards (prototype)');
   const gstinNumber = activeBooking?.gstin || '07AAAAA0000A1Z5';
 
   const handleDownloadContractPdf = () => {
@@ -122,7 +122,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
               ` : ''}
               ${activeBooking?.machinery_roster?.length > 0 ? `
                 <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; margin: 12px 0;">
-                  <strong style="color: #1E3A8A;">Certified Equipment & Machinery Deployed:</strong>
+                  <strong style="color: #1E3A8A;">Inspected Equipment & Machinery Deployed:</strong>
                   <ul style="margin: 6px 0; padding-left: 20px; font-size: 12px;">
                     ${activeBooking.machinery_roster.map(m => `<li><strong>${m.name}</strong>: ${m.spec} (${m.safety_grade})</li>`).join('')}
                   </ul>
@@ -155,7 +155,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
 
             <div class="footer">
               <p>100% Transparent Cooperative Labor Platform • 80% Direct Artisan Wage Allocation • Central MSCS Trust Protected</p>
-              <p>🛡️ Active 30-Day Seva Suraksha Workmanship & Statutory Defect Warranty</p>
+              <p>🛡️ Active 30-Day Seva Suraksha Workmanship & Defect Warranty (prototype)</p>
             </div>
             <script>window.print();</script>
           </body>
@@ -187,28 +187,28 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
             name: "Manoj Kumar Verma",
             role: "Master Contractor & Lead Electrical Supervisor",
             trade: "Industrial Electrical & Substation Audits",
-            kyc_id: "AADHAAR-XXXX-XXXX-9481",
+            kyc_id: "ID-XXXX-9481",
             coop_verification_no: "DL-COOP-VERIF-2026-88419"
           },
           {
             name: "Ramesh Chandra",
             role: "Master Plumber & Pipeline Engineer",
             trade: "Mega Reservoir & Commercial Hydraulics",
-            kyc_id: "AADHAAR-XXXX-XXXX-3829",
+            kyc_id: "ID-XXXX-3829",
             coop_verification_no: "DL-COOP-VERIF-2026-55120"
           },
           {
             name: "Mohammad Arif",
             role: "Chief Furniture & Structural Carpenter",
             trade: "Lecture Hall & Hostel Woodwork",
-            kyc_id: "AADHAAR-XXXX-XXXX-7164",
+            kyc_id: "ID-XXXX-7164",
             coop_verification_no: "DL-COOP-VERIF-2026-99321"
           },
           {
             name: "Sunita Devi",
             role: "Sanitation Guild Supervisor",
             trade: "Hostel & Industrial Kitchen Hygiene",
-            kyc_id: "AADHAAR-XXXX-XXXX-4412",
+            kyc_id: "ID-XXXX-4412",
             coop_verification_no: "DL-COOP-VERIF-2026-22481"
           }
         ];
@@ -256,7 +256,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
             </div>
 
             <p style="font-size: 12px; color: #334155;">
-              <strong>Campus Security Check-post Protocol:</strong> The following cooperative personnel have completed biometric Aadhaar KYC and cooperative credential verification. They are authorized to enter with tools, test equipment, and raw materials for the designated contract.
+              <strong>Campus Security Check-post Protocol:</strong> The following cooperative personnel have completed ID-based KYC (prototype) and cooperative credential verification. They are authorized to enter with tools, test equipment, and raw materials for the designated contract.
             </p>
 
             <table class="table">
@@ -406,7 +406,7 @@ export const Screen13_BulkProjectSuccess = ({ navigation }) => {
                   <Text style={styles.specVal}>{officerTitle}</Text>
                 </View>
                 <View style={styles.specRow}>
-                  <Text style={styles.specKey}>Statutory Standard:</Text>
+                  <Text style={styles.specKey}>Compliance Standard:</Text>
                   <Text style={[styles.specVal, { color: colors.successDark }]}>{complianceTitle}</Text>
                 </View>
               </>

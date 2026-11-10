@@ -166,7 +166,7 @@ export const Screen13_PaymentSuccess = ({ navigation }) => {
             </div>
 
             <div class="footer">
-              <p>Government Registered Cooperative Platform • 80% Direct Artisan Wage Guaranteed</p>
+              <p>Registered Cooperative Platform • 80% Direct Artisan Wage Guaranteed</p>
               ${hasWarranty ? '<p>🛡️ Active 7-Day Seva Suraksha Warranty Protection Included</p>' : ''}
             </div>
             <script>window.print();</script>

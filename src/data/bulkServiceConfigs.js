@@ -383,20 +383,20 @@ export const BULK_SERVICE_CONFIGS = {
       }
     ],
     machinery_roster: [
-      { name: 'Stihl MS 382 50cc Heavy Professional Chainsaws', spec: 'High-torque magnesium crankcase saws with anti-kickback bars', safety_grade: 'Certified Heavy Arborist Class', icon: 'hardware-chip' },
+      { name: 'Stihl MS 382 50cc Heavy Professional Chainsaws', spec: 'High-torque magnesium crankcase saws with anti-kickback bars', safety_grade: 'Inspected Heavy Arborist Class', icon: 'hardware-chip' },
       { name: '18-Meter Hydraulic Boom Crane Truck', spec: 'Insulated aerial work platform with 360-degree boom rotation', safety_grade: 'ANSI A92.2 Aerial Device Standard', icon: 'car' },
       { name: '15 HP Heavy Bio-Waste Wood Branch Chipper', spec: 'Twin-drum reversible chipping knives processing branches up to 120mm', safety_grade: 'Emergency Stop Safety Bar Equipped', icon: 'sync' },
-      { name: 'Commercial Zero-Turn Ride-on Turf Mower (60-inch)', spec: 'Twin hydrostatic transmission with floating deep-deck blades', safety_grade: 'Rollover Protection (ROPS) Certified', icon: 'leaf' },
-      { name: 'Certified High-Tree Rigging Harnesses & Pulleys', spec: 'Friction lowering bollard, static arborist bull ropes & arborist spikes', safety_grade: 'EN 358 / CE Climbing Certified', icon: 'shield-checkmark' }
+      { name: 'Commercial Zero-Turn Ride-on Turf Mower (60-inch)', spec: 'Twin hydrostatic transmission with floating deep-deck blades', safety_grade: 'Rollover Protection (ROPS) Standard', icon: 'leaf' },
+      { name: 'Inspected High-Tree Rigging Harnesses & Pulleys', spec: 'Friction lowering bollard, static arborist bull ropes & arborist spikes', safety_grade: 'Climbing Safety Standard', icon: 'shield-checkmark' }
     ],
     statutory_compliance: {
       code: 'Municipal Tree Protection Authority Regulations & Urban Forestry Safety Code',
-      issuing_body: 'Certified Municipal Arborist & Department of Forest & Wildlife Liaison',
+      issuing_body: 'Grounds Safety & Municipal Tree Care Liaison',
       audit_report: 'Hazardous Tree Pruning Safety Clearance & Green Biomass Audit Certificate',
       mandatory_legal: 'Complies with municipal tree conservation laws and power grid clearance rules'
     },
     squad_composition: [
-      '1 Certified Municipal Arborist & Grounds Safety Officer',
+      '1 Municipal Arborist & Grounds Safety Officer',
       '2 High-Tree Rigging & Aerial Canopy Climbers',
       '4 Heavy Chainsaw Operators & Horticulture Groundsmen'
     ],

@@ -37,7 +37,7 @@ export const Screen02_Registration = ({ route, navigation }) => {
   const [isGpsLoading, setIsGpsLoading] = useState(false);
   const [gpsLocationInfo, setGpsLocationInfo] = useState(null);
 
-  // Real 1-Click GPS & Reverse Geocoding (Rapido / Zomato style)
+  // Real 1-Click GPS & Reverse Geocoding (delivery-app style)
   const handleAutoDetectGps = async () => {
     setIsGpsLoading(true);
     try {
@@ -140,7 +140,7 @@ export const Screen02_Registration = ({ route, navigation }) => {
             )}
           </TouchableOpacity>
 
-          {/* Rapido / Zomato Live GPS Address Banner if fetched */}
+          {/* delivery-app style Live GPS Address Banner if fetched */}
           {gpsLocationInfo && (
             <View style={styles.zomatoGpsCard}>
               <View style={styles.zomatoGpsHeader}>
