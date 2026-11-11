@@ -197,11 +197,86 @@ export async function retryPayout(bookingId) {
   return data;
 }
 
+/**
+ * Triggers autonomous AI Settlement Agent for a PayPal booking (Stage 5.2).
+ *
+ * @param {object} params
+ * @param {string} params.bookingId
+ * @param {string} [params.customerLanguageCode='en']
+ * @returns {Promise<object>}
+ */
+export async function settleWithAgent({ bookingId, customerLanguageCode = 'en' }) {
+  if (!bookingId) throw new Error('Missing bookingId for AI settlement');
+
+  const res = await fetch(`${API_BASE_URL}/api/ai/settlement/${encodeURIComponent(bookingId)}`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ customerLanguageCode })
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok && res.status !== 202) {
+    const err = new Error(data.message || 'AI settlement failed');
+    err.status = res.status;
+    err.error = data.error;
+    throw err;
+  }
+  return { status: res.status, ...data };
+}
+
+/**
+ * Polls status of settlement agent run (Stage 5.2).
+ *
+ * @param {string} bookingId
+ * @returns {Promise<object|null>}
+ */
+export async function fetchSettlementStatus(bookingId) {
+  if (!bookingId) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/ai/settlement/${encodeURIComponent(bookingId)}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('[Telemetry] Failed to fetch settlement status:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetches stored settlement trace and facts (Stage 5.2 / Phase 6 Ledger).
+ *
+ * @param {string} bookingId
+ * @returns {Promise<object|null>}
+ */
+export async function fetchSettlementTrace(bookingId) {
+  if (!bookingId) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/settlement/${encodeURIComponent(bookingId)}/trace`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('[Telemetry] Failed to fetch settlement trace:', err.message);
+    return null;
+  }
+}
+
 export default {
   isPayPalBooking,
   emitJobEvent,
   fetchBillPreview,
   captureOrder,
   fetchPayoutDetails,
-  retryPayout
+  retryPayout,
+  settleWithAgent,
+  fetchSettlementStatus,
+  fetchSettlementTrace
 };

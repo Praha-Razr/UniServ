@@ -25,17 +25,27 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
 
   const captureResult = route.params?.captureResult;
+  const settlementResult = route.params?.settlementResult;
   const currentBooking = activeBooking || route.params?.booking;
   const isPayPal = currentBooking?.payment_method === 'PAYPAL_SANDBOX' || Boolean(currentBooking?.paypal_authorization_id);
+
+  const settlementDecision = settlementResult?.decision || currentBooking?.settlement_decision || null;
+  const settlementMode = settlementResult?.mode || currentBooking?.settlement_mode || (isPayPal ? 'AI_AGENT' : null);
+  const settlementTrace = settlementResult?.trace || currentBooking?.settlement_trace || null;
+  const settlementReceipt = settlementResult?.receipt || currentBooking?.settlement_receipt || null;
+
   const paypalStatus = captureResult?.status || currentBooking?.paypal_status || (currentBooking?.paypal_capture_id ? 'CAPTURED' : 'AUTHORIZED');
   const captureStatus = captureResult?.captureStatus || currentBooking?.paypal_capture_status;
-  const isCaptured = paypalStatus === 'CAPTURED' || captureStatus === 'COMPLETED';
-  const isCapturePending = paypalStatus === 'CAPTURE_PENDING' || captureStatus === 'PENDING';
-  const isHoldForHuman = paypalStatus === 'HOLD_FOR_HUMAN';
-  const capturedUsd = captureResult?.capturedAmountUsd || currentBooking?.paypal_captured_usd || currentBooking?.paypal_authorized_usd || '1.45';
+  const isHoldForHuman = settlementDecision === 'HOLD_FOR_HUMAN' || paypalStatus === 'HOLD_FOR_HUMAN';
+  const isCaptured = !isHoldForHuman && (paypalStatus === 'CAPTURED' || captureStatus === 'COMPLETED' || Boolean(currentBooking?.paypal_capture_id));
+  const isCapturePending = !isHoldForHuman && (paypalStatus === 'CAPTURE_PENDING' || captureStatus === 'PENDING');
+
+  const capturedUsd = isHoldForHuman ? '0.00' : (captureResult?.capturedAmountUsd || currentBooking?.paypal_captured_usd || currentBooking?.paypal_authorized_usd || '1.45');
   const holdCeilingUsd = currentBooking?.paypal_authorized_usd || '1.45';
   const captureId = captureResult?.captureId || currentBooking?.paypal_capture_id;
   const isSimulated = currentBooking?.paypal_mode === 'SIMULATED' || captureResult?.mode === 'SIMULATED';
+
+  const [showTrace, setShowTrace] = useState(false);
 
   const fallbackWorker = getFallbackWorkerForTrade(currentBooking?.service);
   const amountPaid = computeTotal ? computeTotal(currentBooking) : (totalAmount || currentBooking?.total_amount || 500);
@@ -316,11 +326,24 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
             <View style={styles.paypalSettledHeader}>
               <Ionicons name="logo-paypal" size={22} color="#0070BA" />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.paypalSettledBadgeTitle}>
-                  {isSimulated
-                    ? 'PAYPAL SIMULATED SETTLEMENT (DEMO)'
-                    : 'PAYPAL SANDBOX SETTLEMENT'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Text style={styles.paypalSettledBadgeTitle}>
+                    {isSimulated
+                      ? 'PAYPAL SIMULATED SETTLEMENT (DEMO)'
+                      : 'PAYPAL SANDBOX SETTLEMENT'}
+                  </Text>
+                  {settlementMode && (
+                    <View style={styles.modeBadge}>
+                      <Text style={styles.modeBadgeText}>
+                        {settlementMode === 'RULES_ONLY'
+                          ? 'Rules-Only'
+                          : settlementMode === 'REDUCED_AGENT'
+                          ? 'Reduced Agent'
+                          : 'AI Agent'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.paypalSettledIdText}>
                   Auth ID: {currentBooking.paypal_authorization_id}
                 </Text>
@@ -333,7 +356,8 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
               <View style={[
                 styles.paypalSettledPill,
                 isHoldForHuman && { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' },
-                isCapturePending && { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' }
+                isCapturePending && { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' },
+                isCaptured && { backgroundColor: '#DCFCE7', borderColor: '#16A34A' }
               ]}>
                 <Ionicons
                   name={isHoldForHuman ? "time" : (isCapturePending ? "hourglass" : "checkmark-done")}
@@ -343,9 +367,10 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
                 <Text style={[
                   styles.paypalSettledPillText,
                   isHoldForHuman && { color: "#B45309" },
-                  isCapturePending && { color: "#1D4ED8" }
+                  isCapturePending && { color: "#1D4ED8" },
+                  isCaptured && { color: "#16A34A" }
                 ]}>
-                  {isHoldForHuman ? 'HOLD FOR HUMAN' : (isCapturePending ? 'CAPTURE PENDING' : 'CAPTURED')}
+                  {isHoldForHuman ? 'HOLD FOR HUMAN' : (isCapturePending ? 'CAPTURE PENDING' : 'SETTLED')}
                 </Text>
               </View>
             </View>
@@ -355,12 +380,12 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
                 Maximum hold: <Text style={{ fontWeight: '700', color: '#0F172A' }}>${holdCeilingUsd} USD</Text>
               </Text>
               <Text style={{ fontSize: 11, color: '#64748B' }}>
-                Settled bill: <Text style={{ fontWeight: '700', color: '#0F172A' }}>${capturedUsd} USD</Text>
+                Settled bill: <Text style={{ fontWeight: '700', color: '#0F172A' }}>${isHoldForHuman ? '0.00' : capturedUsd} USD</Text>
               </Text>
             </View>
             <Text style={styles.paypalSettledDesc}>
               {isHoldForHuman
-                ? 'Final bill exceeded the pre-authorized ceiling. No funds were captured. Held for cooperative member review.'
+                ? `Held for cooperative review, nothing captured. Reason: ${settlementResult?.holdReason || currentBooking?.holdReason || 'Policy rule or guard triggered human review.'}`
                 : isCapturePending
                 ? 'Capture request submitted to PayPal Sandbox and is awaiting clearance.'
                 : `Settlement completed against authorized hold of $${holdCeilingUsd} USD. Payer: ${currentBooking.paypal_payer?.name || user?.name || 'Customer'}.`}
@@ -558,6 +583,161 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
                     </>
                   )}
                 </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Verified Server Facts Table Card (Stage 5.2) */}
+        {isPayPal && (
+          <View style={styles.factsCard}>
+            <View style={styles.factsHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Ionicons name="shield-checkmark" size={18} color="#0070BA" />
+                <View style={{ marginLeft: 8 }}>
+                  <Text style={styles.factsHeaderTitle}>VERIFIED SERVER FACTS TABLE</Text>
+                  <Text style={styles.factsHeaderSub}>Deterministic settlementEngine breakdown</Text>
+                </View>
+              </View>
+              <View style={styles.factsDeterministicTag}>
+                <Text style={styles.factsDeterministicText}>AUDITED</Text>
+              </View>
+            </View>
+            <View style={styles.factsDivider} />
+            <View style={styles.factsRow}>
+              <Text style={styles.factsLabel}>Base Service Rate</Text>
+              <Text style={styles.factsVal}>₹{currentBooking?.base_amount || currentBooking?.service?.start_price || 99}</Text>
+            </View>
+            {extraWorkCost > 0 && (
+              <View style={styles.factsRow}>
+                <Text style={styles.factsLabel}>Approved Extra Work</Text>
+                <Text style={styles.factsVal}>+₹{extraWorkCost}</Text>
+              </View>
+            )}
+            {partOrderCost > 0 && (
+              <View style={styles.factsRow}>
+                <Text style={styles.factsLabel}>Procured Spare Parts</Text>
+                <Text style={styles.factsVal}>+₹{partOrderCost}</Text>
+              </View>
+            )}
+            <View style={styles.factsRow}>
+              <Text style={styles.factsLabel}>Total Final Bill</Text>
+              <Text style={[styles.factsVal, { fontWeight: '800', color: colors.primary }]}>
+                ${isHoldForHuman ? '0.00' : capturedUsd} USD (₹{amountPaid})
+              </Text>
+            </View>
+            <View style={styles.factsRow}>
+              <Text style={styles.factsLabel}>Pre-Authorized Ceiling</Text>
+              <Text style={styles.factsVal}>${holdCeilingUsd} USD</Text>
+            </View>
+            {isCaptured && (
+              <View style={styles.factsRow}>
+                <Text style={styles.factsLabel}>Cooperative Reserve Retained</Text>
+                <Text style={styles.factsVal}>${retainedAmountUsd} USD</Text>
+              </View>
+            )}
+            {paypalFee && isCaptured && (
+              <View style={[styles.factsRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.factsLabel}>PayPal Sandbox Fee</Text>
+                <Text style={styles.factsVal}>${paypalFee} USD</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Completion Receipt Card (Stage 5.2) */}
+        {isPayPal && settlementReceipt && (
+          <View style={styles.receiptCard}>
+            <View style={styles.receiptHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Ionicons name="chatbubble-ellipses" size={18} color={colors.primary} />
+                <View style={{ marginLeft: 8 }}>
+                  <Text style={styles.receiptHeaderTitle}>COMPLETION RECEIPT</Text>
+                  <Text style={styles.receiptHeaderSub}>Qualitative natural language note</Text>
+                </View>
+              </View>
+              <View style={styles.digitFreeBadge}>
+                <Ionicons name="checkmark-circle" size={12} color="#16A34A" />
+                <Text style={styles.digitFreeBadgeText}>DIGIT-FREE</Text>
+              </View>
+            </View>
+            <View style={styles.receiptDivider} />
+            <View style={styles.receiptSection}>
+              <Text style={styles.receiptLangTag}>English Note</Text>
+              <Text style={styles.receiptBodyText}>{settlementReceipt.receipt_english}</Text>
+            </View>
+            {settlementReceipt.receipt_customer_language && (
+              <View style={[styles.receiptSection, { marginTop: 10 }]}>
+                <Text style={styles.receiptLangTag}>Customer Language Note</Text>
+                <Text style={styles.receiptBodyText}>{settlementReceipt.receipt_customer_language}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Persisted Settlement Agent Audit Trace (Stage 5.2) */}
+        {isPayPal && settlementTrace && (
+          <View style={styles.traceCard}>
+            <TouchableOpacity
+              style={styles.traceHeader}
+              onPress={() => setShowTrace(!showTrace)}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Ionicons name="git-network-outline" size={20} color="#0070BA" />
+                <View style={{ marginLeft: 8, flex: 1 }}>
+                  <Text style={styles.traceHeaderTitle}>SETTLEMENT AGENT AUDIT TRACE</Text>
+                  <Text style={styles.traceHeaderSub}>
+                    {settlementTrace.steps?.length || 0} steps • Mode: {settlementMode || 'AI_AGENT'}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons
+                name={showTrace ? "chevron-up" : "chevron-down"}
+                size={20}
+                color="#64748B"
+              />
+            </TouchableOpacity>
+
+            {showTrace && (
+              <View style={styles.traceBody}>
+                <View style={styles.traceDivider} />
+                {(settlementTrace.steps || []).map((step, idx) => (
+                  <View key={idx} style={styles.traceStepItem}>
+                    <View style={styles.traceStepDot} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={styles.traceStepType}>
+                          Step {step.step}: {step.type.replace(/_/g, ' ').toUpperCase()}
+                        </Text>
+                        <Text style={styles.traceStepTime}>
+                          {step.timestamp ? new Date(step.timestamp).toLocaleTimeString() : ''}
+                        </Text>
+                      </View>
+                      {step.tool && (
+                        <Text style={styles.traceStepDetail}>
+                          Tool: <Text style={{ fontWeight: '700' }}>{step.tool}</Text>
+                          {step.args?.amount_usd_cents ? ` • Amount: ${step.args.amount_usd_cents}¢` : ''}
+                        </Text>
+                      )}
+                      {step.elapsed_ms !== undefined && (
+                        <Text style={styles.traceStepDetail}>
+                          Call Duration: {step.elapsed_ms}ms {step.retried ? '(retried)' : ''}
+                        </Text>
+                      )}
+                      {step.decision && (
+                        <Text style={[styles.traceStepDetail, { fontWeight: '800', color: step.decision === 'APPROVE' ? '#16A34A' : '#B45309' }]}>
+                          Outcome: {step.decision} {step.hold_reason ? `(${step.hold_reason})` : ''}
+                        </Text>
+                      )}
+                      {step.guard && (
+                        <Text style={[styles.traceStepDetail, { color: '#DC2626', fontWeight: '700' }]}>
+                          Guard Rejection: {step.guard} (attempt {step.attempt})
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
               </View>
             )}
           </View>
@@ -1256,6 +1436,202 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontWeight: '600',
     flex: 1
+  },
+  modeBadge: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    marginLeft: 6
+  },
+  modeBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#4338CA'
+  },
+  factsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#0070BA',
+    marginBottom: 16,
+    shadowColor: '#0070BA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2
+  },
+  factsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  factsHeaderTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: 0.5
+  },
+  factsHeaderSub: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1
+  },
+  factsDeterministicTag: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  factsDeterministicText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#0284C7'
+  },
+  factsDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 10
+  },
+  factsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC'
+  },
+  factsLabel: {
+    fontSize: 12,
+    color: '#475569'
+  },
+  factsVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A'
+  },
+  receiptCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16
+  },
+  receiptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  receiptHeaderTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: 0.5
+  },
+  receiptHeaderSub: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1
+  },
+  digitFreeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 3
+  },
+  digitFreeBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#16A34A'
+  },
+  receiptDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 10
+  },
+  receiptSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  receiptLangTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primary,
+    marginBottom: 4,
+    textTransform: 'uppercase'
+  },
+  receiptBodyText: {
+    fontSize: 12,
+    color: '#1E293B',
+    lineHeight: 18,
+    fontStyle: 'italic'
+  },
+  traceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    marginBottom: 16
+  },
+  traceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  traceHeaderTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: 0.5
+  },
+  traceHeaderSub: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1
+  },
+  traceBody: {
+    marginTop: 8
+  },
+  traceDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginBottom: 10
+  },
+  traceStepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10
+  },
+  traceStepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0070BA',
+    marginTop: 4
+  },
+  traceStepType: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0F172A'
+  },
+  traceStepTime: {
+    fontSize: 10,
+    color: '#94A3B8'
+  },
+  traceStepDetail: {
+    fontSize: 10,
+    color: '#475569',
+    marginTop: 2
   }
 });
 

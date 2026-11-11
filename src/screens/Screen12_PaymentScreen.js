@@ -17,7 +17,7 @@ import { useUser } from '../context/UserContext';
 import Header from '../components/Header';
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import Screen12_BulkPaymentScreen from './Screen12_BulkPaymentScreen';
-import { fetchBillPreview, captureOrder } from '../utils/jobTelemetry';
+import { fetchBillPreview, captureOrder, settleWithAgent, fetchSettlementStatus } from '../utils/jobTelemetry';
 
 export const Screen12_PaymentScreen = ({ route, navigation }) => {
   const { activeBooking, totalAmount, completePayment, isFirstTimeUser, FIRST_TIME_DISCOUNT, computeTotal } = useBooking();
@@ -39,6 +39,9 @@ export const Screen12_PaymentScreen = ({ route, navigation }) => {
   const [billPreview, setBillPreview] = useState(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(isPayPal);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isAgentAuditing, setIsAgentAuditing] = useState(false);
+  const [auditElapsed, setAuditElapsed] = useState(0);
+  const [isStillWorking, setIsStillWorking] = useState(false);
   const [captureError, setCaptureError] = useState(null);
 
   useEffect(() => {
@@ -87,47 +90,120 @@ export const Screen12_PaymentScreen = ({ route, navigation }) => {
   const authorizedHoldUsd = currentBooking?.paypal_authorized_usd || billPreview?.authorizedAmountUsd || '1.45';
 
   const handlePay = async () => {
-    if (isProcessing || isCapturing) return; // Prevent double-tap!
+    if (isProcessing || isCapturing || isAgentAuditing) return; // Prevent double-tap!
 
     if (isPayPal) {
-      setIsCapturing(true);
+      setIsAgentAuditing(true);
       setCaptureError(null);
-      const bookingId = currentBooking?.paypal_booking_id || currentBooking?.bookingId || currentBooking?.booking_id;
-      const authorizationId = currentBooking?.paypal_authorization_id;
+      setAuditElapsed(0);
+      setIsStillWorking(false);
 
-      try {
-        const captureResult = await captureOrder({ bookingId, authorizationId });
+      const targetBookingId = currentBooking?.paypal_booking_id || currentBooking?.bookingId || currentBooking?.booking_id;
+      if (!targetBookingId) {
+        setIsAgentAuditing(false);
+        Alert.alert('Error', 'Missing booking ID for settlement');
+        return;
+      }
 
-        completePayment('PAYPAL_SANDBOX', {
-          paypal_capture_id: captureResult.captureId,
-          paypal_capture_status: captureResult.captureStatus || captureResult.status,
-          paypal_captured_usd: captureResult.capturedAmountUsd || finalBillUsd,
-          paypal_status: captureResult.status,
-          paypal_hold_reason: captureResult.holdReason,
-          paid_amount: captureResult.totalRupees || finalBillRupees
-        });
+      // Elapsed timer & 45s fallback poller
+      let elapsedSeconds = 0;
+      let pollInterval = null;
+      const timer = setInterval(() => {
+        elapsedSeconds++;
+        setAuditElapsed(elapsedSeconds);
+        if (elapsedSeconds > 45) {
+          setIsStillWorking(true);
+          if (!pollInterval) {
+            pollInterval = setInterval(async () => {
+              try {
+                const pollData = await fetchSettlementStatus(targetBookingId);
+                if (pollData && (pollData.settlementStatus === 'COMPLETED' || pollData.decision)) {
+                  clearInterval(timer);
+                  clearInterval(pollInterval);
+                  finishSettlement(pollData);
+                }
+              } catch (e) {}
+            }, 2500);
+          }
+        }
+      }, 1000);
+
+      function finishSettlement(settlementResult) {
+        clearInterval(timer);
+        if (pollInterval) clearInterval(pollInterval);
+        setIsAgentAuditing(false);
+
+        const isHeld = settlementResult.decision === 'HOLD_FOR_HUMAN';
+        const capture = settlementResult.captureResult;
+        const capturedUsdVal = capture?.captured_cents
+          ? (capture.captured_cents / 100).toFixed(2)
+          : (settlementResult.capturedAmountUsd || (isHeld ? '0.00' : finalBillUsd));
+
+        if (typeof completePayment === 'function') {
+          completePayment('PAYPAL_SANDBOX', {
+            paypal_capture_id: capture?.capture_id || settlementResult.captureId,
+            paypal_capture_status: capture?.status || (isHeld ? 'HELD' : 'COMPLETED'),
+            paypal_captured_usd: capturedUsdVal,
+            paypal_status: isHeld ? 'HOLD_FOR_HUMAN' : 'CAPTURED',
+            paypal_hold_reason: settlementResult.holdReason,
+            paid_amount: isHeld ? 0 : finalBillRupees
+          });
+        }
 
         navigation.navigate('PaymentSuccess', {
           booking: {
             ...currentBooking,
-            paypal_capture_id: captureResult.captureId,
-            paypal_capture_status: captureResult.captureStatus || captureResult.status,
-            paypal_captured_usd: captureResult.capturedAmountUsd || finalBillUsd,
-            paypal_status: captureResult.status,
-            paypal_hold_reason: captureResult.holdReason,
-            paid_amount: captureResult.totalRupees || finalBillRupees
+            paypal_capture_id: capture?.capture_id || settlementResult.captureId,
+            paypal_capture_status: capture?.status || (isHeld ? 'HELD' : 'COMPLETED'),
+            paypal_captured_usd: capturedUsdVal,
+            paypal_status: isHeld ? 'HOLD_FOR_HUMAN' : 'CAPTURED',
+            paypal_hold_reason: settlementResult.holdReason,
+            paid_amount: isHeld ? 0 : finalBillRupees,
+            settlement_trace: settlementResult.trace,
+            settlement_receipt: settlementResult.receipt,
+            settlement_decision: settlementResult.decision,
+            settlement_mode: settlementResult.mode
           },
-          captureResult
+          settlementResult,
+          captureResult: capture ? {
+            captureId: capture.capture_id,
+            captureStatus: capture.status,
+            capturedAmountUsd: capturedUsdVal,
+            status: isHeld ? 'HOLD_FOR_HUMAN' : 'CAPTURED',
+            holdReason: settlementResult.holdReason,
+            paypalFeeUsd: capture.paypal_fee_usd,
+            payout: settlementResult.payout
+          } : {
+            status: isHeld ? 'HOLD_FOR_HUMAN' : 'CAPTURED',
+            holdReason: settlementResult.holdReason,
+            payout: settlementResult.payout
+          }
         });
+      }
+
+      try {
+        const result = await settleWithAgent({
+          bookingId: targetBookingId,
+          customerLanguageCode: user?.language || 'en'
+        });
+
+        if (result && result.settlementStatus === 'COMPLETED') {
+          finishSettlement(result);
+        } else if (result && result.inProgress) {
+          setIsStillWorking(true);
+        } else {
+          finishSettlement(result);
+        }
       } catch (err) {
-        console.error('PayPal capture error:', err);
-        setCaptureError(err.message || 'Payment capture failed');
+        clearInterval(timer);
+        if (pollInterval) clearInterval(pollInterval);
+        setIsAgentAuditing(false);
+        console.error('AI settlement error:', err);
+        setCaptureError(err.message || 'Settlement failed');
         Alert.alert(
-          'Capture Error',
-          `${err.message || 'Payment capture failed'}${err.debugId ? `\n(Debug ID: ${err.debugId})` : ''}`
+          'Settlement Notice',
+          `${err.message || 'Could not complete settlement'}${err.error ? `\n(${err.error})` : ''}`
         );
-      } finally {
-        setIsCapturing(false);
       }
       return;
     }
@@ -267,6 +343,32 @@ export const Screen12_PaymentScreen = ({ route, navigation }) => {
             <Text style={styles.paypalAuthNotice}>
               Settlement captures strictly the final bill (${finalBillUsd} USD) against this hold ceiling.
             </Text>
+          </View>
+        )}
+
+        {/* Settlement Agent Auditing Progress Card (Stage 5.2) */}
+        {isPayPal && isAgentAuditing && (
+          <View style={styles.agentAuditingCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={styles.agentPulseCircle}>
+                <ActivityIndicator size="small" color="#0070BA" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.agentAuditingTitle}>Settlement agent is auditing the job</Text>
+                <Text style={styles.agentAuditingSubtitle}>
+                  {isStillWorking
+                    ? 'Still working on verification... polling audit state from server'
+                    : 'Verifying service telemetry, anomaly policy rules, and cooperative split quotas...'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.agentAuditingTimerRow}>
+              <View style={styles.agentTimerBadge}>
+                <Ionicons name="timer-outline" size={13} color="#0070BA" />
+                <Text style={styles.agentTimerText}>{auditElapsed}s elapsed</Text>
+              </View>
+              <Text style={styles.agentGuardedText}>Autonomous AI Audit • Strict Server Guards Active</Text>
+            </View>
           </View>
         )}
 
@@ -516,13 +618,18 @@ export const Screen12_PaymentScreen = ({ route, navigation }) => {
       {/* Sticky Bottom Pay Action */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
-          style={[styles.payBtn, isPayPal && styles.payBtnPayPal]}
+          style={[styles.payBtn, isPayPal && styles.payBtnPayPal, isAgentAuditing && { opacity: 0.85, backgroundColor: '#005ea6' }]}
           onPress={handlePay}
-          disabled={isProcessing || isCapturing || isPreviewLoading}
+          disabled={isProcessing || isCapturing || isPreviewLoading || isAgentAuditing}
           activeOpacity={0.85}
         >
-          {isProcessing || isCapturing ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+          {isProcessing || isCapturing || isAgentAuditing ? (
+            <View style={styles.payBtnRow}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.payBtnText}>
+                {isAgentAuditing ? `Auditing Settlement (${auditElapsed}s)...` : 'Processing...'}
+              </Text>
+            </View>
           ) : (
             <View style={styles.payBtnRow}>
               <Ionicons name={isPayPal ? "logo-paypal" : "lock-closed"} size={16} color="#FFFFFF" />
@@ -912,6 +1019,68 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#475569',
     lineHeight: 16
+  },
+  agentAuditingCard: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#0284C7',
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3
+  },
+  agentPulseCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#38BDF8'
+  },
+  agentAuditingTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0369A1'
+  },
+  agentAuditingSubtitle: {
+    fontSize: 12,
+    color: '#475569',
+    marginTop: 3,
+    lineHeight: 16
+  },
+  agentAuditingTimerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#BAE6FD'
+  },
+  agentTimerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  agentTimerText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0369A1',
+    marginLeft: 4
+  },
+  agentGuardedText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0284C7'
   }
 });
 

@@ -361,7 +361,10 @@ router.post('/capture', async (req, res) => {
     let payoutSummary = null;
     let payoutSkippedReason = null;
 
-    if (!isCompleted) {
+    if (req.body.isAgentSettlement || req.body.fromAgent || booking.settlementStatus === 'IN_PROGRESS') {
+      // Stage 5.2: Payouts for agent-settled bookings run strictly via agent's run_payouts tool
+      payoutSkippedReason = 'Agent settlement active: payouts deferred to run_payouts tool';
+    } else if (!isCompleted) {
       payoutSkippedReason = `Capture status is ${captureResult.status || 'not COMPLETED'}`;
     } else if (captureResult.mode === 'SIMULATED') {
       payoutSkippedReason = 'Booking was processed in SIMULATED mode';

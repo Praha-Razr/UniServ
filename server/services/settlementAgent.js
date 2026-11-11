@@ -118,6 +118,56 @@ const defaultFakeExecutors = {
   }
 };
 
+/**
+ * Creates production PayPal executors wired to paypalClient, payoutService, and store.
+ */
+function createRealPayPalExecutors({ paypalClient: ppClient, payoutService: poService, store: st } = {}) {
+  const pp = ppClient || require('./paypalClient');
+  const po = poService || require('./payoutService');
+  const s = st || require('../store');
+
+  return {
+    capture: async (booking, amount_usd_cents) => {
+      const finalAmountUsd = (amount_usd_cents / 100).toFixed(2);
+      const captureResult = await pp.captureAuthorization({
+        authorizationId: booking.authorizationId,
+        amountUsd: finalAmountUsd
+      });
+
+      const isCompleted = captureResult.status === 'COMPLETED';
+      const newStatus = isCompleted ? 'CAPTURED' : (captureResult.status === 'PENDING' ? 'CAPTURE_PENDING' : 'FAILED');
+
+      s.updateBooking(booking.bookingId, {
+        status: newStatus,
+        captureId: captureResult.captureId,
+        captureStatus: captureResult.status,
+        capturedCents: amount_usd_cents,
+        capturedAmountUsd: finalAmountUsd,
+        paypal_fee_usd: captureResult.paypalFeeUsd || null,
+        capturedAt: new Date().toISOString(),
+        stage: '3.1',
+        payoutEligible: true
+      });
+
+      return {
+        status: captureResult.status,
+        capture_id: captureResult.captureId,
+        captured_cents: amount_usd_cents,
+        paypal_fee_usd: captureResult.paypalFeeUsd || null
+      };
+    },
+    payout: async (booking) => {
+      const payoutSummary = await po.executePayout(booking.bookingId);
+      return {
+        status: payoutSummary.payoutStatus || 'SUCCESS',
+        payout_batch_id: payoutSummary.payoutBatchId,
+        items_count: payoutSummary.items?.length || 0,
+        summary: payoutSummary
+      };
+    }
+  };
+}
+
 // ----------------------------------------------------------------------------
 // 3. System Instruction for Settlement Agent
 // ----------------------------------------------------------------------------
@@ -400,10 +450,41 @@ async function runSettlementAgent(booking, options = {}) {
   let turn = 0;
   const maxTurns = 6;
   let isLoopActive = true;
+  const AGENT_TOTAL_TIMEOUT_MS = options.totalTimeoutMs || 60000;
 
   while (turn < maxTurns && isLoopActive) {
+    // Check total agent run timeout (60 seconds)
+    const elapsedTotal = Date.now() - startTime;
+    if (elapsedTotal > AGENT_TOTAL_TIMEOUT_MS) {
+      logTrace('total_timeout_exceeded', {
+        elapsed_ms: elapsedTotal,
+        limit_ms: AGENT_TOTAL_TIMEOUT_MS
+      });
+      if (policy.decision === 'APPROVE' && !captureResult) {
+        mode = 'RULES_ONLY';
+        logTrace('rules_only_fallback_triggered', {
+          reason: 'Agent run exceeded 60s total timeout on clean job'
+        });
+        try {
+          captureResult = await executors.capture(booking, expectedCents);
+          payoutResult = await executors.payout(booking);
+          decision = 'APPROVE';
+        } catch (exErr) {
+          decision = 'HOLD_FOR_HUMAN';
+          holdReason = 'EXECUTOR_ERROR';
+          holdExplanation = exErr.message;
+        }
+      } else {
+        decision = 'HOLD_FOR_HUMAN';
+        holdReason = policy.reason || 'TOTAL_AGENT_TIMEOUT';
+        holdExplanation = `Settlement agent run exceeded total timeout limit (${Math.round(elapsedTotal / 1000)}s)`;
+      }
+      isLoopActive = false;
+      break;
+    }
+
     turn++;
-    logTrace('model_call', { turn });
+    const turnStart = Date.now();
 
     // State-dependent tool availability
     // run_payouts is offered ONLY after capture succeeded
@@ -428,6 +509,16 @@ async function runSettlementAgent(booking, options = {}) {
     } catch (err) {
       geminiRes = { success: false, error: err.message || 'NETWORK_ERROR' };
     }
+
+    const callElapsed = geminiRes?.elapsedMs ?? (Date.now() - turnStart);
+    const retried = Boolean(geminiRes?.retried);
+    console.log(`[SettlementAgent] Turn ${turn} Gemini call finished in ${callElapsed}ms (retried: ${retried})`);
+
+    logTrace('model_call', {
+      turn,
+      elapsed_ms: callElapsed,
+      retried
+    });
 
     // Handle Gemini failure or timeout: Fall back to RULES_ONLY for clean jobs, HOLD for flagged jobs
     if (!geminiRes || !geminiRes.success) {
@@ -783,6 +874,7 @@ async function runSettlementAgent(booking, options = {}) {
 module.exports = {
   runSettlementAgent,
   generateReceipt,
+  createRealPayPalExecutors,
   CAPTURE_TOOL_DECLARATION,
   PAYOUT_TOOL_DECLARATION,
   HOLD_TOOL_DECLARATION,

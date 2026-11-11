@@ -173,6 +173,8 @@ async function callGemini({
         functionCall: mockResult.functionCall || null,
         parts: mockResult.parts || (mockResult.candidates?.[0]?.content?.parts ?? []),
         content: mockResult.content || (mockResult.candidates?.[0]?.content ?? null),
+        elapsedMs: mockResult.elapsedMs || 10,
+        retried: !!mockResult.retried,
         raw: mockResult
       };
     } catch (mockErr) {
@@ -218,6 +220,7 @@ async function callGemini({
 
   let attempt = 0;
   let lastError = null;
+  const callStart = Date.now();
 
   while (attempt <= maxRetries) {
     attempt++;
@@ -256,6 +259,8 @@ async function callGemini({
           functionCall: fcPart?.functionCall || null,
           parts: parts,
           content: candidate?.content || null,
+          elapsedMs: Date.now() - callStart,
+          retried: attempt > 1,
           raw: data
         };
       }
@@ -286,7 +291,9 @@ async function callGemini({
     success: false,
     mode: 'SIMULATED_AI',
     simulated: true,
-    error: lastError || 'UNKNOWN_ERROR'
+    error: lastError || 'UNKNOWN_ERROR',
+    elapsedMs: Date.now() - callStart,
+    retried: attempt > 1
   };
 }
 
