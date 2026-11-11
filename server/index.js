@@ -16,6 +16,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const ordersRouter = require('./routes/orders');
+const jobsRouter = require('./routes/jobs');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -48,6 +49,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/orders', ordersRouter);
+app.use('/api/jobs', jobsRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

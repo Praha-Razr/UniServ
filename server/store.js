@@ -104,6 +104,22 @@ function getBookingByOrderId(orderId) {
 }
 
 /**
+ * Retrieves a booking by PayPal authorizationId.
+ * @param {string} authorizationId
+ * @returns {object|null}
+ */
+function getBookingByAuthorizationId(authorizationId) {
+  if (!authorizationId) return null;
+  const bookings = readAll();
+  for (const key of Object.keys(bookings)) {
+    if (bookings[key].authorizationId === authorizationId) {
+      return bookings[key];
+    }
+  }
+  return null;
+}
+
+/**
  * Saves a new booking record.
  * @param {object} record
  * @returns {object} The saved record
@@ -158,11 +174,36 @@ function updateBookingByOrderId(orderId, updates) {
   return updateBooking(existing.bookingId, updates);
 }
 
+/**
+ * Appends a stamped event to the booking's events array.
+ * @param {string} bookingId
+ * @param {object} event
+ * @returns {object|null} Updated booking record
+ */
+function addBookingEvent(bookingId, event) {
+  if (!bookingId) return null;
+  const bookings = readAll();
+  const existing = bookings[bookingId];
+  if (!existing) return null;
+  const events = existing.events ? [...existing.events, event] : [event];
+  return updateBooking(bookingId, { events });
+}
+
+/**
+ * Test helper to reset store for isolated tests.
+ */
+function _clearForTesting() {
+  writeAll({});
+}
+
 module.exports = {
   getBooking,
   getBookingByOrderId,
+  getBookingByAuthorizationId,
   saveBooking,
   updateBooking,
   updateBookingByOrderId,
+  addBookingEvent,
+  _clearForTesting,
   readAll
 };

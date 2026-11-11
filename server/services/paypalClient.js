@@ -16,6 +16,22 @@ const SANDBOX_BASE_URL = 'https://api-m.sandbox.paypal.com';
 
 let cachedToken = null;
 let tokenExpiresAt = 0;
+let clientOverride = null;
+
+/**
+ * Sets a client override for testing without network requests.
+ * @param {object|null} override
+ */
+function setClientOverride(override) {
+  clientOverride = override;
+}
+
+/**
+ * Clears the client override.
+ */
+function resetClientOverride() {
+  clientOverride = null;
+}
 
 /**
  * Checks whether valid sandbox credentials exist in the environment.
@@ -97,6 +113,10 @@ async function getAccessToken() {
  * @returns {Promise<{ orderId: string, approvalUrl: string, mode: string }>}
  */
 async function createOrder({ bookingId, authorizedCents, returnUrl, cancelUrl, description }) {
+  if (clientOverride && typeof clientOverride.createOrder === 'function') {
+    return clientOverride.createOrder({ bookingId, authorizedCents, returnUrl, cancelUrl, description });
+  }
+
   if (!hasValidCredentials()) {
     // Graceful fallback: SIMULATED mode
     const simulatedOrderId = `SIM_ORD_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -193,6 +213,10 @@ async function createOrder({ bookingId, authorizedCents, returnUrl, cancelUrl, d
  * @returns {Promise<{ authorizationId: string, status: string, mode: string }>}
  */
 async function authorizeOrder(orderId) {
+  if (clientOverride && typeof clientOverride.authorizeOrder === 'function') {
+    return clientOverride.authorizeOrder(orderId);
+  }
+
   if (orderId && orderId.startsWith('SIM_ORD_')) {
     // Graceful fallback for SIMULATED mode
     return {
@@ -262,9 +286,95 @@ async function authorizeOrder(orderId) {
   }
 }
 
+/**
+ * Captures an authorized PayPal payment.
+ *
+ * @param {object} params
+ * @param {string} params.authorizationId
+ * @param {string|number} params.amountUsd - String formatted to 2 decimals e.g. "1.16"
+ * @returns {Promise<{ captureId: string, status: string, amount: string, mode: string }>}
+ */
+async function captureAuthorization({ authorizationId, amountUsd }) {
+  if (clientOverride && typeof clientOverride.captureAuthorization === 'function') {
+    return clientOverride.captureAuthorization({ authorizationId, amountUsd });
+  }
+
+  const formattedAmount = typeof amountUsd === 'number' ? amountUsd.toFixed(2) : String(amountUsd);
+
+  if (authorizationId && authorizationId.startsWith('SIM_AUTH_')) {
+    // Graceful fallback for SIMULATED mode
+    return {
+      captureId: `SIM_CAP_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      status: 'COMPLETED',
+      amount: formattedAmount,
+      currency: 'USD',
+      mode: 'SIMULATED'
+    };
+  }
+
+  if (!hasValidCredentials()) {
+    throw new Error('PayPal credentials missing for authorization capture');
+  }
+
+  const token = await getAccessToken();
+
+  const payload = {
+    amount: {
+      value: formattedAmount,
+      currency_code: 'USD'
+    },
+    final_capture: true
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`${SANDBOX_BASE_URL}/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/capture`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': `capture_${authorizationId}`
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    const debugId = res.headers.get('paypal-debug-id') || 'none';
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {}
+
+    if (!res.ok) {
+      const errorName = data.name || data.error || `HTTP_${res.status}`;
+      const finalDebugId = data.debug_id || debugId;
+      const err = new Error(`PayPal Capture Failed: ${errorName}`);
+      err.paypalError = errorName;
+      err.debugId = finalDebugId;
+      throw err;
+    }
+
+    return {
+      captureId: data.id,
+      status: data.status || 'COMPLETED',
+      amount: data.amount ? data.amount.value : formattedAmount,
+      currency: data.amount ? data.amount.currency_code : 'USD',
+      mode: 'REAL_SANDBOX'
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 module.exports = {
   hasValidCredentials,
   getAccessToken,
   createOrder,
-  authorizeOrder
+  authorizeOrder,
+  captureAuthorization,
+  setClientOverride,
+  resetClientOverride
 };

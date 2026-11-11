@@ -15,6 +15,7 @@ const express = require('express');
 const router = express.Router();
 const store = require('../store');
 const { validateAndBuildEvidence, computeEstimateAndHold, ValidationError } = require('../services/settlementService');
+const { deriveBillFromEvents } = require('../services/jobEventService');
 const paypalClient = require('../services/paypalClient');
 
 /**
@@ -200,6 +201,186 @@ router.post('/authorize', async (req, res) => {
 });
 
 /**
+ * POST /api/orders/capture
+ * Performs guarded capture of authorized hold.
+ * 
+ * Rules:
+ *  1. Requires booking.status === 'AUTHORIZED' (or returns existing capture/hold idempotently).
+ *  2. Requires 'complete' event in booking.events.
+ *  3. Calls the SAME deriveBillFromEvents() as bill-preview.
+ *  4. Guard: if finalCents > authorizedCents, do NOT call PayPal capture.
+ *     Sets status HOLD_FOR_HUMAN.
+ *  5. Captures via PayPal with idempotency header capture_<authorizationId>.
+ *  6. Honest capture status: COMPLETED -> CAPTURED, PENDING -> CAPTURE_PENDING.
+ */
+router.post('/capture', async (req, res) => {
+  const { bookingId, authorizationId } = req.body;
+
+  if (!bookingId && !authorizationId) {
+    return res.status(400).json({
+      success: false,
+      error: 'MISSING_PARAMS',
+      message: 'Must provide bookingId or authorizationId'
+    });
+  }
+
+  const booking = (bookingId ? store.getBooking(bookingId) : null) ||
+                  (authorizationId ? store.getBookingByAuthorizationId(authorizationId) : null);
+
+  if (!booking) {
+    return res.status(404).json({
+      success: false,
+      error: 'BOOKING_NOT_FOUND',
+      message: 'No booking record found for the provided ID'
+    });
+  }
+
+  // Idempotency: if already CAPTURED or CAPTURE_PENDING, return existing record
+  if (booking.status === 'CAPTURED' || booking.status === 'CAPTURE_PENDING') {
+    return res.status(200).json({
+      success: true,
+      bookingId: booking.bookingId,
+      orderId: booking.orderId,
+      authorizationId: booking.authorizationId,
+      captureId: booking.captureId,
+      capturedCents: booking.capturedCents,
+      capturedAmountUsd: booking.capturedAmountUsd,
+      status: booking.status,
+      captureStatus: booking.captureStatus,
+      mode: booking.mode,
+      alreadyCaptured: true
+    });
+  }
+
+  // Idempotency: if already HOLD_FOR_HUMAN, return existing hold
+  if (booking.status === 'HOLD_FOR_HUMAN') {
+    return res.status(200).json({
+      success: true,
+      bookingId: booking.bookingId,
+      orderId: booking.orderId,
+      authorizationId: booking.authorizationId,
+      status: 'HOLD_FOR_HUMAN',
+      holdReason: booking.holdReason,
+      mode: booking.mode,
+      alreadyHeld: true,
+      message: 'Held for cooperative review, nothing captured'
+    });
+  }
+
+  // Amendment 1: Events and capture require booking.status === 'AUTHORIZED'
+  if (booking.status !== 'AUTHORIZED') {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_STATUS',
+      message: `Cannot capture booking with status "${booking.status}". Required: "AUTHORIZED"`
+    });
+  }
+
+  // Require completion event
+  const events = booking.events || [];
+  const completeEvent = events.find((e) => e.type === 'complete');
+  if (!completeEvent) {
+    return res.status(400).json({
+      success: false,
+      error: 'JOB_NOT_COMPLETED',
+      message: 'Cannot capture before completion OTP event is recorded'
+    });
+  }
+
+  // Amendment 4: Call the SAME deriveBillFromEvents function
+  const calculation = deriveBillFromEvents(booking, events);
+  const { finalCents, finalAmountUsd, totalRupees, totalPaise, activeSeconds, bill } = calculation;
+
+  // Guard check: final cents vs authorized ceiling
+  if (finalCents > (booking.authorizedCents || 0)) {
+    const holdReason = `Final bill ($${finalAmountUsd} USD / ₹${totalRupees}) exceeded authorized ceiling ($${booking.authorizedAmountUsd} USD)`;
+    store.updateBooking(booking.bookingId, {
+      status: 'HOLD_FOR_HUMAN',
+      holdReason,
+      finalBillPaise: totalPaise,
+      finalBillRupees: totalRupees,
+      finalCents,
+      finalAmountUsd,
+      heldAt: new Date().toISOString()
+    });
+
+    return res.status(200).json({
+      success: true,
+      bookingId: booking.bookingId,
+      orderId: booking.orderId,
+      authorizationId: booking.authorizationId,
+      status: 'HOLD_FOR_HUMAN',
+      holdReason,
+      authorizedAmountUsd: booking.authorizedAmountUsd,
+      finalAmountUsd,
+      totalRupees,
+      mode: booking.mode,
+      message: 'Held for cooperative review, nothing captured'
+    });
+  }
+
+  // Within ceiling: Proceed with PayPal capture
+  try {
+    const captureResult = await paypalClient.captureAuthorization({
+      authorizationId: booking.authorizationId,
+      amountUsd: finalAmountUsd
+    });
+
+    // Amendment 6 & 8: Honest capture status
+    const isCompleted = captureResult.status === 'COMPLETED';
+    const newStatus = isCompleted ? 'CAPTURED' : (captureResult.status === 'PENDING' ? 'CAPTURE_PENDING' : 'FAILED');
+
+    store.updateBooking(booking.bookingId, {
+      status: newStatus,
+      captureId: captureResult.captureId,
+      captureStatus: captureResult.status,
+      capturedCents: finalCents,
+      capturedAmountUsd: finalAmountUsd,
+      finalBillPaise: totalPaise,
+      finalBillRupees: totalRupees,
+      activeSeconds,
+      capturedAt: new Date().toISOString()
+    });
+
+    return res.status(200).json({
+      success: true,
+      bookingId: booking.bookingId,
+      orderId: booking.orderId,
+      authorizationId: booking.authorizationId,
+      captureId: captureResult.captureId,
+      capturedCents: finalCents,
+      capturedAmountUsd: finalAmountUsd,
+      totalRupees,
+      status: newStatus,
+      captureStatus: captureResult.status,
+      mode: captureResult.mode
+    });
+  } catch (err) {
+    const errorName = err.paypalError || err.name || 'CAPTURE_FAILED';
+    const debugId = err.debugId || 'none';
+
+    store.updateBooking(booking.bookingId, {
+      status: 'FAILED',
+      error: {
+        errorName,
+        debugId,
+        occurredAt: new Date().toISOString(),
+        action: 'capture'
+      }
+    });
+
+    console.error(`Authorization capture failed [${errorName}] (Debug ID: ${debugId})`);
+
+    return res.status(400).json({
+      success: false,
+      error: errorName,
+      debugId,
+      message: 'PayPal authorization capture failed'
+    });
+  }
+});
+
+/**
  * GET /api/orders/:orderId
  * Returns ONLY status and IDs (Amendment 9: no evidence, no payer name).
  */
@@ -219,6 +400,7 @@ router.get('/:orderId', (req, res) => {
     orderId: booking.orderId,
     status: booking.status,
     authorizationId: booking.authorizationId || null,
+    captureId: booking.captureId || null,
     mode: booking.mode
   });
 });

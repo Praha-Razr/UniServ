@@ -111,7 +111,7 @@ export const Screen06_WorkerMatch = ({ route, navigation }) => {
             <View style={styles.paypalAuthDivider} />
             <View style={styles.paypalAuthDetailsRow}>
               <Text style={styles.paypalAuthDetailText}>
-                Authorized Ceiling:{' '}
+                Maximum hold:{' '}
                 <Text style={{ fontWeight: '800', color: '#0F172A' }}>
                   ${currentBooking.paypal_authorized_usd || '1.45'} USD
                 </Text>

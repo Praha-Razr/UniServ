@@ -14,6 +14,7 @@ import { useBooking } from '../context/BookingContext';
 import { useUser } from '../context/UserContext';
 import Header from '../components/Header';
 import { getFallbackWorkerForTrade } from '../utils/locationService';
+import { emitJobEvent } from '../utils/jobTelemetry';
 
 export const Screen08_StartOTP = ({ route, navigation }) => {
   const { activeBooking, verifyStartOtp } = useBooking();
@@ -25,6 +26,7 @@ export const Screen08_StartOTP = ({ route, navigation }) => {
 
   const handleWorkerEnteredOtp = () => {
     verifyStartOtp();
+    emitJobEvent(activeBooking, 'start');
     navigation.navigate('JobInProgress', { worker, booking: activeBooking });
   };
 

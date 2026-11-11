@@ -100,7 +100,9 @@ function validateAndBuildEvidence(input) {
 function computeEstimateAndHold(evidence) {
   const bill = computeBill(evidence);
   const estimateCents = toUsdCents(bill.totalPaise, SANDBOX_DEMO_EXCHANGE_RATE_INR_TO_USD);
-  const authorizedCents = authorizationCeiling(estimateCents);
+  const rawCeilingCents = authorizationCeiling(estimateCents);
+  const minHoldCents = Math.max(0, parseInt(process.env.MIN_HOLD_CENTS || '0', 10) || 0);
+  const authorizedCents = Math.max(rawCeilingCents, minHoldCents);
 
   return {
     bill,

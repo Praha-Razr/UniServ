@@ -604,7 +604,7 @@ export const BookingProvider = ({ children }) => {
   };
 
   // 13. Process Payment & Settlement
-  const completePayment = (method) => {
+  const completePayment = (method, extraData = {}) => {
     if (pendingCancellationFee > 0) {
       setPendingCancellationFee(0);
     }
@@ -614,6 +614,7 @@ export const BookingProvider = ({ children }) => {
       const isPayPal = prev.payment_method === 'PAYPAL_SANDBOX' || Boolean(prev.paypal_authorization_id);
       return {
         ...prev,
+        ...extraData,
         paid_amount: finalPaidTotal,
         total_amount: finalPaidTotal,
         payment_method: isPayPal ? 'PAYPAL_SANDBOX' : (method || 'UPI'),

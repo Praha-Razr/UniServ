@@ -12,6 +12,7 @@ import { colors } from '../theme/colors';
 import { useBooking } from '../context/BookingContext';
 import { useUser } from '../context/UserContext';
 import Header from '../components/Header';
+import { emitJobEvent } from '../utils/jobTelemetry';
 
 export const Screen11_CompletionOTP = ({ navigation }) => {
   const { activeBooking, verifyCompletionOtp, computeTotal } = useBooking();
@@ -37,6 +38,7 @@ export const Screen11_CompletionOTP = ({ navigation }) => {
 
   const handleConfirmCompletion = () => {
     verifyCompletionOtp();
+    emitJobEvent(activeBooking, 'complete');
     if (activeBooking?.is_bulk_project) {
       if (activeBooking?.payment_status === 'full_paid' || Number(activeBooking?.remaining_amount) <= 0) {
         navigation.navigate('Rating', { booking: activeBooking });

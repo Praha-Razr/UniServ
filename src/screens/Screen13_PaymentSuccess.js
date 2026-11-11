@@ -22,8 +22,19 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
   const { t, user } = useUser();
   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
 
+  const captureResult = route.params?.captureResult;
   const currentBooking = activeBooking || route.params?.booking;
   const isPayPal = currentBooking?.payment_method === 'PAYPAL_SANDBOX' || Boolean(currentBooking?.paypal_authorization_id);
+  const paypalStatus = captureResult?.status || currentBooking?.paypal_status || (currentBooking?.paypal_capture_id ? 'CAPTURED' : 'AUTHORIZED');
+  const captureStatus = captureResult?.captureStatus || currentBooking?.paypal_capture_status;
+  const isCaptured = paypalStatus === 'CAPTURED' || captureStatus === 'COMPLETED';
+  const isCapturePending = paypalStatus === 'CAPTURE_PENDING' || captureStatus === 'PENDING';
+  const isHoldForHuman = paypalStatus === 'HOLD_FOR_HUMAN';
+  const capturedUsd = captureResult?.capturedAmountUsd || currentBooking?.paypal_captured_usd || currentBooking?.paypal_authorized_usd || '1.45';
+  const holdCeilingUsd = currentBooking?.paypal_authorized_usd || '1.45';
+  const captureId = captureResult?.captureId || currentBooking?.paypal_capture_id;
+  const isSimulated = currentBooking?.paypal_mode === 'SIMULATED' || captureResult?.mode === 'SIMULATED';
+
   const fallbackWorker = getFallbackWorkerForTrade(currentBooking?.service);
   const amountPaid = computeTotal ? computeTotal(currentBooking) : (totalAmount || currentBooking?.total_amount || 500);
   const bookingId = currentBooking?.booking_id || 'BK84920';
@@ -91,7 +102,7 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
               <p><strong>Service Rendered:</strong> ${serviceName}</p>
               <p><strong>Lead Artisan:</strong> ${workerName}</p>
               <p><strong>Cooperative Society:</strong> Delhi Labour Cooperative Union</p>
-              <p><strong>Payment Mode:</strong> ${isPayPal ? `PayPal Sandbox Authorization Hold (Auth ID: ${activeBooking?.paypal_authorization_id})` : (activeBooking?.payment_method || 'Instant UPI')}</p>
+              <p><strong>Payment Mode:</strong> ${isPayPal ? `PayPal Sandbox (${isCaptured ? `Captured $${capturedUsd} USD` : paypalStatus}${captureId ? `, Capture ID: ${captureId}` : ''}) (Auth ID: ${currentBooking?.paypal_authorization_id})` : (activeBooking?.payment_method || 'Instant UPI')}</p>
             </div>
 
             <table>
@@ -201,24 +212,42 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Success Checkmark Hero */}
         <View style={styles.successHero}>
-          <View style={styles.successIconCircle}>
-            <Ionicons name="checkmark-done" size={44} color="#FFFFFF" />
+          <View style={[
+            styles.successIconCircle,
+            isHoldForHuman && { backgroundColor: '#F59E0B' },
+            isCapturePending && { backgroundColor: '#3B82F6' }
+          ]}>
+            <Ionicons
+              name={isHoldForHuman ? "time" : (isCapturePending ? "hourglass" : "checkmark-done")}
+              size={44}
+              color="#FFFFFF"
+            />
           </View>
           <Text style={styles.successTitle}>
-            {isScheduledOrAdvance ? (t('advancePaymentConfirmed') || 'Advance Payment Confirmed') : t('paymentSuccessful')}
+            {isHoldForHuman
+              ? 'Held for Cooperative Review'
+              : isCapturePending
+              ? 'Pending Capture Confirmation'
+              : isScheduledOrAdvance
+              ? (t('advancePaymentConfirmed') || 'Advance Payment Confirmed')
+              : t('paymentSuccessful')}
           </Text>
           <Text style={styles.paidAmountText}>
-            {isPayPal ? `$${currentBooking?.paypal_authorized_usd || '1.45'} USD` : `₹${amountPaid}`}
+            {isPayPal ? `$${capturedUsd} USD` : `₹${amountPaid}`}
           </Text>
           {isPayPal && (
-            <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 2 }}>
-              (₹${amountPaid} settled via PayPal Sandbox Authorization Hold)
+            <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 2, textAlign: 'center' }}>
+              {isHoldForHuman
+                ? 'Held for cooperative review, nothing captured'
+                : isCapturePending
+                ? `Pending capture confirmation (₹${amountPaid} • 1 USD = 85.00 INR)`
+                : `(₹${amountPaid} settled via PayPal Sandbox • 1 USD = 85.00 INR sandbox demo rate)`}
             </Text>
           )}
           <View style={styles.txnPill}>
             <Text style={styles.txnPillText}>
               {isPayPal
-                ? `PayPal Sandbox Auth ID: ${currentBooking?.paypal_authorization_id}`
+                ? (captureId ? `PayPal Capture ID: ${captureId}` : `PayPal Auth ID: ${currentBooking?.paypal_authorization_id}`)
                 : (isScheduledOrAdvance ? `${t('escrowRef') || 'Escrow Ref'}: UNISERV-ESCROW-${bookingId}` : `${t('txnRef') || 'Txn Ref'}: TXN-COOP-${bookingId}`)}
             </Text>
           </View>
@@ -226,27 +255,58 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
 
         {/* PayPal Sandbox Authorization Settled Card */}
         {isPayPal && (
-          <View style={styles.paypalSettledCard}>
+          <View style={[styles.paypalSettledCard, isHoldForHuman && { borderColor: '#F59E0B' }]}>
             <View style={styles.paypalSettledHeader}>
               <Ionicons name="logo-paypal" size={22} color="#0070BA" />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={styles.paypalSettledBadgeTitle}>
-                  {currentBooking?.paypal_mode === 'SIMULATED'
-                    ? 'PAYPAL SIMULATED AUTHORIZATION SETTLED (DEMO)'
-                    : 'PAYPAL SANDBOX AUTHORIZATION SETTLED'}
+                  {isSimulated
+                    ? 'PAYPAL SIMULATED SETTLEMENT (DEMO)'
+                    : 'PAYPAL SANDBOX SETTLEMENT'}
                 </Text>
                 <Text style={styles.paypalSettledIdText}>
                   Auth ID: {currentBooking.paypal_authorization_id}
                 </Text>
+                {captureId && (
+                  <Text style={[styles.paypalSettledIdText, { color: '#0070BA', fontWeight: '700' }]}>
+                    Capture ID: {captureId}
+                  </Text>
+                )}
               </View>
-              <View style={styles.paypalSettledPill}>
-                <Ionicons name="checkmark-done" size={13} color="#16A34A" />
-                <Text style={styles.paypalSettledPillText}>CAPTURED</Text>
+              <View style={[
+                styles.paypalSettledPill,
+                isHoldForHuman && { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' },
+                isCapturePending && { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' }
+              ]}>
+                <Ionicons
+                  name={isHoldForHuman ? "time" : (isCapturePending ? "hourglass" : "checkmark-done")}
+                  size={13}
+                  color={isHoldForHuman ? "#B45309" : (isCapturePending ? "#1D4ED8" : "#16A34A")}
+                />
+                <Text style={[
+                  styles.paypalSettledPillText,
+                  isHoldForHuman && { color: "#B45309" },
+                  isCapturePending && { color: "#1D4ED8" }
+                ]}>
+                  {isHoldForHuman ? 'HOLD FOR HUMAN' : (isCapturePending ? 'CAPTURE PENDING' : 'CAPTURED')}
+                </Text>
               </View>
             </View>
             <View style={styles.paypalSettledDivider} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={{ fontSize: 11, color: '#64748B' }}>
+                Maximum hold: <Text style={{ fontWeight: '700', color: '#0F172A' }}>${holdCeilingUsd} USD</Text>
+              </Text>
+              <Text style={{ fontSize: 11, color: '#64748B' }}>
+                Settled bill: <Text style={{ fontWeight: '700', color: '#0F172A' }}>${capturedUsd} USD</Text>
+              </Text>
+            </View>
             <Text style={styles.paypalSettledDesc}>
-              Settlement completed against authorized hold of ${currentBooking.paypal_authorized_usd || '1.45'} USD. Payer: {currentBooking.paypal_payer?.name || user?.name || 'Customer'}.
+              {isHoldForHuman
+                ? 'Final bill exceeded the pre-authorized ceiling. No funds were captured. Held for cooperative member review.'
+                : isCapturePending
+                ? 'Capture request submitted to PayPal Sandbox and is awaiting clearance.'
+                : `Settlement completed against authorized hold of $${holdCeilingUsd} USD. Payer: ${currentBooking.paypal_payer?.name || user?.name || 'Customer'}.`}
             </Text>
           </View>
         )}

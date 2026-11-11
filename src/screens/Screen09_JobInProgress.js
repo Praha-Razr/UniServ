@@ -21,6 +21,7 @@ import BookingStatusStepper from '../components/BookingStatusStepper';
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import AudioVoiceRecorder from '../components/AudioVoiceRecorder';
 import { getFallbackWorkerForTrade } from '../utils/locationService';
+import { emitJobEvent } from '../utils/jobTelemetry';
 
 export const Screen09_JobInProgress = ({ route, navigation }) => {
   const {
@@ -118,11 +119,18 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
 
   const handleRequestPartOrder = () => {
     setProcurementModalVisible(false);
+    const parsedCost = Math.min(Math.max(1, Number(partCostInput) || 250), 3000);
     const generatedOtp = requestPartProcurement({
       part_name: partNameInput,
       estimated_delivery: deliveryEstInput,
-      part_cost: Number(partCostInput) || 250,
+      part_cost: parsedCost,
       current_seconds: secondsElapsed
+    });
+    // Emit server-stamped pause_parts and parts events for PayPal booking
+    emitJobEvent(activeBooking, 'pause_parts');
+    emitJobEvent(activeBooking, 'parts', {
+      cost: parsedCost,
+      part_name: partNameInput
     });
     Alert.alert(
       '⏸️ Work Timer Paused',
@@ -140,6 +148,8 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
       setResumeOtpModalVisible(false);
       setResumeOtpInput('');
       setResumeOtpError('');
+      // Emit server-stamped resume event for PayPal booking
+      emitJobEvent(activeBooking, 'resume');
       Alert.alert(
         '▶️ Work Timer Resumed',
         'Spare part received & verified! Work timer has resumed from where it paused. Zero minutes were billed during procurement.'
@@ -174,11 +184,18 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
   };
 
   const handleApproveExtraParts = () => {
+    const parsedAmount = Math.min(Math.max(1, Number(extraWorkDef?.amount) || 150), 2000);
     approveExtraWork({
       title: extraWorkDef?.title || 'Component Replacement',
-      amount: extraWorkDef?.amount || 150,
+      amount: parsedAmount,
       description: extraWorkDef?.description || 'Additional spare parts approved by user',
       photo: extraWorkDef?.photo
+    });
+    // Emit server-stamped extra_work event for PayPal booking
+    emitJobEvent(activeBooking, 'extra_work', {
+      amount: parsedAmount,
+      description: extraWorkDef?.title || 'Component Replacement',
+      approved: true
     });
   };
 

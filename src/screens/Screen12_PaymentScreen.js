@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,8 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -16,6 +17,7 @@ import { useUser } from '../context/UserContext';
 import Header from '../components/Header';
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import Screen12_BulkPaymentScreen from './Screen12_BulkPaymentScreen';
+import { fetchBillPreview, captureOrder } from '../utils/jobTelemetry';
 
 export const Screen12_PaymentScreen = ({ navigation }) => {
   const { activeBooking, totalAmount, completePayment, isFirstTimeUser, FIRST_TIME_DISCOUNT, computeTotal } = useBooking();
@@ -32,6 +34,29 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
 
   const isPayPal = activeBooking?.payment_method === 'PAYPAL_SANDBOX' || Boolean(activeBooking?.paypal_authorization_id);
 
+  const [billPreview, setBillPreview] = useState(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(isPayPal);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureError, setCaptureError] = useState(null);
+
+  useEffect(() => {
+    if (!isPayPal) return;
+    const bookingId = activeBooking?.paypal_booking_id || activeBooking?.bookingId;
+    if (!bookingId) {
+      setIsPreviewLoading(false);
+      return;
+    }
+    fetchBillPreview(bookingId)
+      .then((preview) => {
+        if (preview) {
+          setBillPreview(preview);
+        }
+      })
+      .finally(() => {
+        setIsPreviewLoading(false);
+      });
+  }, [isPayPal, activeBooking?.paypal_booking_id, activeBooking?.bookingId]);
+
   const PAYMENT_METHODS = [
     { id: 'UPI', label: t('instantUpi') || 'Instant UPI / Cooperative Wallet', icon: 'flash', badge: t('fastest') || 'Fastest' },
     { id: 'Card', label: t('cardPayment') || 'Credit / Debit Card', icon: 'card', badge: null },
@@ -40,14 +65,65 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
   ];
 
   // Dynamic final amount calculation for solo service
-  const amountToPay = computeTotal ? computeTotal(activeBooking) : (totalAmount || activeBooking?.total_amount || 350);
+  const standardRupeeTotal = computeTotal ? computeTotal(activeBooking) : (totalAmount || activeBooking?.total_amount || 350);
+  const finalBillRupees = billPreview ? billPreview.totalRupees : standardRupeeTotal;
+  const finalBillUsd = billPreview
+    ? billPreview.finalAmountUsd
+    : (Math.round((finalBillRupees * 100) / 85) / 100).toFixed(2);
+  const authorizedHoldUsd = activeBooking?.paypal_authorized_usd || billPreview?.authorizedAmountUsd || '1.45';
 
-  const handlePay = () => {
+  const handlePay = async () => {
+    if (isProcessing || isCapturing) return; // Prevent double-tap!
+
+    if (isPayPal) {
+      setIsCapturing(true);
+      setCaptureError(null);
+      const bookingId = activeBooking?.paypal_booking_id || activeBooking?.bookingId;
+      const authorizationId = activeBooking?.paypal_authorization_id;
+
+      try {
+        const captureResult = await captureOrder({ bookingId, authorizationId });
+
+        completePayment('PAYPAL_SANDBOX', {
+          paypal_capture_id: captureResult.captureId,
+          paypal_capture_status: captureResult.captureStatus || captureResult.status,
+          paypal_captured_usd: captureResult.capturedAmountUsd || finalBillUsd,
+          paypal_status: captureResult.status,
+          paypal_hold_reason: captureResult.holdReason,
+          paid_amount: captureResult.totalRupees || finalBillRupees
+        });
+
+        navigation.navigate('PaymentSuccess', {
+          booking: {
+            ...activeBooking,
+            paypal_capture_id: captureResult.captureId,
+            paypal_capture_status: captureResult.captureStatus || captureResult.status,
+            paypal_captured_usd: captureResult.capturedAmountUsd || finalBillUsd,
+            paypal_status: captureResult.status,
+            paypal_hold_reason: captureResult.holdReason,
+            paid_amount: captureResult.totalRupees || finalBillRupees
+          },
+          captureResult
+        });
+      } catch (err) {
+        console.error('PayPal capture error:', err);
+        setCaptureError(err.message || 'Payment capture failed');
+        Alert.alert(
+          'Capture Error',
+          `${err.message || 'Payment capture failed'}${err.debugId ? `\n(Debug ID: ${err.debugId})` : ''}`
+        );
+      } finally {
+        setIsCapturing(false);
+      }
+      return;
+    }
+
+    // Standard non-PayPal payment flow
     setIsProcessing(true);
     setTimeout(() => {
       try {
         if (typeof completePayment === 'function') {
-          completePayment(isPayPal ? 'PAYPAL_SANDBOX' : selectedMethod);
+          completePayment(selectedMethod);
         }
       } catch (err) {
         console.error('Payment completion err:', err);
@@ -73,15 +149,22 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
         {/* Payable Amount Card */}
         <View style={styles.amountCard}>
           <Text style={styles.amountLabel}>
-            {isPayPal ? 'PAYPAL AUTHORIZATION HOLD (FINAL SETTLEMENT)' : t('totalPayable')}
+            {isPayPal ? 'TOTAL PAYABLE (FINAL SERVICE SETTLEMENT)' : t('totalPayable')}
           </Text>
           <Text style={styles.amountVal}>
-            {isPayPal ? `$${activeBooking?.paypal_authorized_usd || '1.45'} USD` : `₹${amountToPay}`}
+            {isPayPal ? `$${finalBillUsd} USD` : `₹${standardRupeeTotal}`}
           </Text>
           {isPayPal && (
             <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4, fontWeight: '600' }}>
-              Equivalent to ₹{amountToPay} (Sandbox Demo Rate: 1 USD = 85 INR)
+              Equivalent to ₹${finalBillRupees} (1 USD = 85.00 INR sandbox demo rate)
             </Text>
+          )}
+          {isPayPal && billPreview?.demoTimeScale && (
+            <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginTop: 6, borderWidth: 1, borderColor: '#FDE68A' }}>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#92400E' }}>
+                DEMO TIME SCALE: {billPreview.demoTimeScale}x
+              </Text>
+            </View>
           )}
           <View style={styles.bookingRefRow}>
             <Text style={styles.bookingRefText}>{t('bookingId') || 'Booking ID'}: {activeBooking?.booking_id || 'BK84920'}</Text>
@@ -114,9 +197,9 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
             <View style={styles.paypalAuthDivider} />
             <View style={styles.paypalAuthDetailsRow}>
               <Text style={styles.paypalAuthDetailText}>
-                Authorized Ceiling:{' '}
+                Maximum hold:{' '}
                 <Text style={{ fontWeight: '800', color: '#0F172A' }}>
-                  ${activeBooking.paypal_authorized_usd || '1.45'} USD
+                  ${authorizedHoldUsd} USD
                 </Text>
               </Text>
               <Text style={styles.paypalAuthDetailText}>
@@ -127,7 +210,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
               </Text>
             </View>
             <Text style={styles.paypalAuthNotice}>
-              Funds are held securely in PayPal Sandbox. Final settlement will capture against this authorization hold.
+              Settlement captures strictly the final bill (${finalBillUsd} USD) against this hold ceiling.
             </Text>
           </View>
         )}
@@ -380,18 +463,18 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
         <TouchableOpacity
           style={[styles.payBtn, isPayPal && styles.payBtnPayPal]}
           onPress={handlePay}
-          disabled={isProcessing}
+          disabled={isProcessing || isCapturing || isPreviewLoading}
           activeOpacity={0.85}
         >
-          {isProcessing ? (
+          {isProcessing || isCapturing ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <View style={styles.payBtnRow}>
               <Ionicons name={isPayPal ? "logo-paypal" : "lock-closed"} size={16} color="#FFFFFF" />
               <Text style={styles.payBtnText}>
                 {isPayPal
-                  ? `Settle via PayPal Authorization Hold • $${activeBooking?.paypal_authorized_usd || '1.45'} USD`
-                  : `${t('payNow')} • ₹${amountToPay}`}
+                  ? `Settle Final Bill • $${finalBillUsd} USD`
+                  : `${t('payNow')} • ₹${standardRupeeTotal}`}
               </Text>
             </View>
           )}
