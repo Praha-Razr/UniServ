@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -74,6 +74,7 @@ export const AppNavigator = () => {
     if (!payPalProcessing) return;
 
     const resolvePayPal = async () => {
+      let draft = null;
       try {
         if (typeof document !== 'undefined') {
           document.title = 'UniServ';
@@ -87,7 +88,6 @@ export const AppNavigator = () => {
         const bookingId = params.get('booking_id');
 
         const rawDraft = await AsyncStorage.getItem('@uniserv_paypal_booking_draft');
-        let draft = null;
         try {
           draft = rawDraft ? JSON.parse(rawDraft) : null;
         } catch (e) {}
@@ -189,7 +189,9 @@ export const AppNavigator = () => {
               bookingRecord
             }));
 
-            // Persist directly to active booking storage
+            // Persist directly to active booking storage (per-user and active fallback)
+            const activePhone = user?.phone ? String(user.phone).replace(/[^0-9]/g, '') : '9876543210';
+            await AsyncStorage.setItem(`@uniserv_active_booking_${activePhone}`, JSON.stringify(bookingRecord));
             await AsyncStorage.setItem('@uniserv_active_booking', JSON.stringify(bookingRecord));
 
             setActiveBooking(bookingRecord);

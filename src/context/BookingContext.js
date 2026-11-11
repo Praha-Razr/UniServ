@@ -4,6 +4,7 @@ import workersData from '../data/workers.json';
 import servicesData from '../data/services.json';
 import cooperativesData from '../data/cooperatives.json';
 import { getWorkersForTrade, getFallbackWorkerForTrade } from '../utils/locationService';
+import { useUser } from './UserContext';
 const { computeBill } = require('../utils/settlementEngine');
 
 const BookingContext = createContext();
@@ -31,6 +32,9 @@ const INITIAL_PAST_BOOKINGS = [
 ];
 
 export const BookingProvider = ({ children }) => {
+  const { user, isLoggedIn } = useUser();
+  const currentPhone = user?.phone ? String(user.phone).replace(/[^0-9]/g, '') : null;
+
   const [activeBooking, setActiveBookingState] = useState(null);
   const [pastBookings, setPastBookingsState] = useState(INITIAL_PAST_BOOKINGS);
   const [communityRequests, setCommunityRequestsState] = useState([]);
@@ -39,11 +43,23 @@ export const BookingProvider = ({ children }) => {
   const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
   const generateBookingId = () => 'BK' + Math.floor(10000 + Math.random() * 90000).toString();
 
-  // Load persisted bookings on launch
+  // Load persisted bookings for active user on launch or user change
   useEffect(() => {
     const loadStoredBookings = async () => {
       try {
-        const storedActive = await AsyncStorage.getItem('@uniserv_active_booking');
+        if (!isLoggedIn || !currentPhone) {
+          setActiveBookingState(null);
+          return;
+        }
+
+        const userKey = `@uniserv_active_booking_${currentPhone}`;
+        let storedActive = await AsyncStorage.getItem(userKey);
+
+        // Fallback to legacy unkeyed item only if per-user key is not yet set
+        if (!storedActive) {
+          storedActive = await AsyncStorage.getItem('@uniserv_active_booking');
+        }
+
         const rawDraft = await AsyncStorage.getItem('@uniserv_paypal_booking_draft');
         let activeObj = storedActive ? JSON.parse(storedActive) : null;
         if (rawDraft) {
@@ -64,9 +80,18 @@ export const BookingProvider = ({ children }) => {
             }
           } catch (e) {}
         }
-        if (activeObj) {
-          setActiveBookingState(activeObj);
-        }
+        setActiveBookingState(activeObj || null);
+      } catch (e) {
+        console.warn('Error loading stored bookings:', e);
+      }
+    };
+    loadStoredBookings();
+  }, [isLoggedIn, currentPhone]);
+
+  // Load global auxiliary data (past bookings, community requests, cancellation fee)
+  useEffect(() => {
+    const loadAuxData = async () => {
+      try {
         const storedPast = await AsyncStorage.getItem('@uniserv_past_bookings');
         if (storedPast) {
           setPastBookingsState(JSON.parse(storedPast));
@@ -80,10 +105,10 @@ export const BookingProvider = ({ children }) => {
           setPendingCancellationFeeState(Number(storedCancelFee) || 0);
         }
       } catch (e) {
-        console.warn('Error loading stored bookings:', e);
+        console.warn('Error loading auxiliary data:', e);
       }
     };
-    loadStoredBookings();
+    loadAuxData();
   }, []);
 
   const setPendingCancellationFee = (fee) => {
@@ -100,7 +125,7 @@ export const BookingProvider = ({ children }) => {
     }
   };
 
-  // Helper to persist active booking state
+  // Helper to persist active booking state per user
   const setActiveBooking = (updater) => {
     setActiveBookingState((prev) => {
       let updated;
@@ -124,17 +149,41 @@ export const BookingProvider = ({ children }) => {
       } else {
         updated = updater;
       }
+
+      const storageKey = currentPhone ? `@uniserv_active_booking_${currentPhone}` : '@uniserv_active_booking';
+
       if (updated) {
-        AsyncStorage.setItem('@uniserv_active_booking', JSON.stringify(updated)).catch((e) =>
+        AsyncStorage.setItem(storageKey, JSON.stringify(updated)).catch((e) =>
           console.warn('Error saving active booking:', e)
         );
+        if (currentPhone) {
+          AsyncStorage.removeItem('@uniserv_active_booking').catch(() => {});
+        }
       } else {
-        AsyncStorage.removeItem('@uniserv_active_booking').catch((e) =>
+        AsyncStorage.removeItem(storageKey).catch((e) =>
           console.warn('Error clearing active booking:', e)
         );
+        AsyncStorage.removeItem('@uniserv_active_booking').catch(() => {});
+        AsyncStorage.removeItem('@uniserv_paypal_booking_draft').catch(() => {});
       }
       return updated;
     });
+  };
+
+  // Explicit helper to completely clear active booking state and storage
+  const clearActiveBooking = async () => {
+    setActiveBookingState(null);
+    const storageKey = currentPhone ? `@uniserv_active_booking_${currentPhone}` : null;
+    try {
+      if (storageKey) {
+        await AsyncStorage.removeItem(storageKey);
+      }
+      await AsyncStorage.removeItem('@uniserv_active_booking');
+      await AsyncStorage.removeItem('@uniserv_paypal_booking_draft');
+      await AsyncStorage.removeItem('@uniserv_paypal_cancel_notice');
+    } catch (e) {
+      console.warn('Error clearing active booking storage:', e);
+    }
   };
 
   const setPastBookings = (updater) => {
@@ -395,7 +444,7 @@ export const BookingProvider = ({ children }) => {
     const resumeOtp = generateOTP();
     setActiveBooking(prev => {
       if (!prev) return null;
-      return {
+      const updated = {
         ...prev,
         is_procurement_paused: true,
         accumulated_work_seconds: Number(current_seconds || 0),
@@ -820,6 +869,7 @@ export const BookingProvider = ({ children }) => {
         fileComplaint,
         submitCommunityBulkRequest,
         setActiveBooking,
+        clearActiveBooking,
         pendingCancellationFee,
         setPendingCancellationFee,
         cancelBookingWithPenalty,

@@ -8,16 +8,20 @@ import {
   TouchableOpacity,
   Modal
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useUser } from '../context/UserContext';
+import { useBooking } from '../context/BookingContext';
 import Header from '../components/Header';
 import LanguageSelectorModal from '../components/LanguageSelectorModal';
 
 export const ProfileScreen = ({ navigation }) => {
   const { user, language, setLanguage, logout, t } = useUser();
+  const { clearActiveBooking, setPendingCancellationFee } = useBooking();
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [resetNotice, setResetNotice] = useState(null);
 
   const handleOpenLogoutModal = () => {
     setShowLogoutModal(true);
@@ -26,6 +30,32 @@ export const ProfileScreen = ({ navigation }) => {
   const handleConfirmLogout = async () => {
     setShowLogoutModal(false);
     await logout();
+  };
+
+  const handleResetDemoState = async () => {
+    try {
+      const cleanPhone = (user?.phone || '').replace(/[^0-9]/g, '');
+      const keysToRemove = [
+        '@uniserv_active_booking',
+        '@uniserv_paypal_booking_draft',
+        '@uniserv_paypal_cancel_notice',
+        '@uniserv_pending_cancellation_fee'
+      ];
+      if (cleanPhone) {
+        keysToRemove.push(`@uniserv_active_booking_${cleanPhone}`);
+      }
+      await AsyncStorage.multiRemove(keysToRemove);
+      if (typeof clearActiveBooking === 'function') {
+        await clearActiveBooking();
+      }
+      if (typeof setPendingCancellationFee === 'function') {
+        setPendingCancellationFee(0);
+      }
+      setResetNotice('Demo state reset: active bookings, PayPal drafts, and fees cleared.');
+      setTimeout(() => setResetNotice(null), 4000);
+    } catch (e) {
+      console.error('Error resetting demo state:', e);
+    }
   };
 
   return (
@@ -130,6 +160,37 @@ export const ProfileScreen = ({ navigation }) => {
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Sandbox Prototype Controls */}
+        <View style={styles.menuCard}>
+          <Text style={styles.menuSectionTitle}>SANDBOX PROTOTYPE CONTROLS</Text>
+
+          {resetNotice ? (
+            <View style={styles.resetNoticeBanner}>
+              <Ionicons name="checkmark-circle" size={16} color="#059669" />
+              <Text style={styles.resetNoticeText}>{resetNotice}</Text>
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleResetDemoState}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="refresh-circle" size={20} color="#D97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.menuItemTitle}>Reset Demo State</Text>
+                <Text style={styles.menuItemSub}>
+                  Clear active booking, PayPal drafts, and cancellation fees
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="trash-outline" size={18} color="#D97706" />
           </TouchableOpacity>
         </View>
 
@@ -412,6 +473,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     marginLeft: 6
+  },
+  resetNoticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10
+  },
+  resetNoticeText: {
+    fontSize: 12,
+    color: '#065F46',
+    fontWeight: '600',
+    marginLeft: 6,
+    flex: 1
   }
 });
 

@@ -66,8 +66,7 @@ export const UserProvider = ({ children }) => {
         setUsersDb(currentDb);
 
         // 3. For prototype evaluation and clear demonstration, always start at the Login screen on app load
-        // EXCEPT when the user is returning from PayPal sandbox checkout (URL params or existing PayPal draft)
-        const rawDraft = await AsyncStorage.getItem('@uniserv_paypal_booking_draft');
+        // EXCEPT when the user is returning from PayPal sandbox checkout (URL params)
         const hasUrlPayPalParams = typeof window !== 'undefined' && window.location && (
           window.location.search.includes('paypal_return=true') ||
           window.location.search.includes('paypal_cancel=true') ||
@@ -75,11 +74,12 @@ export const UserProvider = ({ children }) => {
           window.location.search.includes('PayerID=')
         );
 
-        if (hasUrlPayPalParams || rawDraft) {
+        if (hasUrlPayPalParams) {
           setIsLoggedIn(true);
           setUser(DEFAULT_SEEDED_USERS_DB['9876543210']);
         } else {
           await AsyncStorage.removeItem('@uniserv_is_logged_in');
+          await AsyncStorage.removeItem('@uniserv_active_booking');
           setIsLoggedIn(false);
         }
       } catch (e) {
@@ -150,6 +150,10 @@ export const UserProvider = ({ children }) => {
       await AsyncStorage.setItem('@uniserv_active_phone', cleanPhone);
       await AsyncStorage.setItem('@uniserv_user', JSON.stringify(targetUser));
       await AsyncStorage.setItem('@uniserv_is_logged_in', 'true');
+      // Clear legacy un-keyed active booking and unassociated drafts so different logins never see past tasks
+      await AsyncStorage.removeItem('@uniserv_active_booking');
+      await AsyncStorage.removeItem('@uniserv_paypal_booking_draft');
+      await AsyncStorage.removeItem('@uniserv_paypal_cancel_notice');
     } catch (e) {
       console.error('Error persisting login session:', e);
     }
@@ -190,6 +194,7 @@ export const UserProvider = ({ children }) => {
 
   // Explicit User Sign-Out
   const logout = async () => {
+    const cleanPhone = (user?.phone || '').replace(/[^0-9]/g, '');
     setIsLoggedIn(false);
     setUser({
       phone: '',
@@ -201,6 +206,12 @@ export const UserProvider = ({ children }) => {
     try {
       await AsyncStorage.removeItem('@uniserv_is_logged_in');
       await AsyncStorage.removeItem('@uniserv_active_phone');
+      await AsyncStorage.removeItem('@uniserv_active_booking');
+      if (cleanPhone) {
+        await AsyncStorage.removeItem(`@uniserv_active_booking_${cleanPhone}`);
+      }
+      await AsyncStorage.removeItem('@uniserv_paypal_booking_draft');
+      await AsyncStorage.removeItem('@uniserv_paypal_cancel_notice');
     } catch (e) {
       console.error('Error clearing session:', e);
     }

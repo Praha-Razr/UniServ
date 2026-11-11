@@ -19,12 +19,14 @@ import PaymentBreakdown from '../components/PaymentBreakdown';
 import Screen12_BulkPaymentScreen from './Screen12_BulkPaymentScreen';
 import { fetchBillPreview, captureOrder } from '../utils/jobTelemetry';
 
-export const Screen12_PaymentScreen = ({ navigation }) => {
+export const Screen12_PaymentScreen = ({ route, navigation }) => {
   const { activeBooking, totalAmount, completePayment, isFirstTimeUser, FIRST_TIME_DISCOUNT, computeTotal } = useBooking();
   const { user, t } = useUser();
 
+  const currentBooking = activeBooking || route?.params?.booking;
+
   // If bulk project is active, delegate directly to dedicated Bulk Payment Screen
-  if (activeBooking?.is_bulk_project) {
+  if (currentBooking?.is_bulk_project) {
     return <Screen12_BulkPaymentScreen navigation={navigation} />;
   }
 
@@ -32,7 +34,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
   const [upiId, setUpiId] = useState('priya.sharma@okaxis');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const isPayPal = activeBooking?.payment_method === 'PAYPAL_SANDBOX' || Boolean(activeBooking?.paypal_authorization_id);
+  const isPayPal = currentBooking?.payment_method === 'PAYPAL_SANDBOX' || Boolean(currentBooking?.paypal_authorization_id);
 
   const [billPreview, setBillPreview] = useState(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(isPayPal);
@@ -40,22 +42,34 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
   const [captureError, setCaptureError] = useState(null);
 
   useEffect(() => {
-    if (!isPayPal) return;
-    const bookingId = activeBooking?.paypal_booking_id || activeBooking?.bookingId;
-    if (!bookingId) {
+    if (!isPayPal) {
       setIsPreviewLoading(false);
       return;
     }
-    fetchBillPreview(bookingId)
+    const targetBookingId = currentBooking?.paypal_booking_id || currentBooking?.bookingId || currentBooking?.booking_id;
+    if (!targetBookingId) {
+      setIsPreviewLoading(false);
+      return;
+    }
+    setIsPreviewLoading(true);
+    fetchBillPreview(targetBookingId)
       .then((preview) => {
         if (preview) {
           setBillPreview(preview);
         }
       })
+      .catch((e) => {
+        console.warn('Failed to load bill preview:', e);
+      })
       .finally(() => {
         setIsPreviewLoading(false);
       });
-  }, [isPayPal, activeBooking?.paypal_booking_id, activeBooking?.bookingId]);
+  }, [
+    isPayPal,
+    currentBooking?.paypal_booking_id,
+    currentBooking?.bookingId,
+    currentBooking?.booking_id
+  ]);
 
   const PAYMENT_METHODS = [
     { id: 'UPI', label: t('instantUpi') || 'Instant UPI / Cooperative Wallet', icon: 'flash', badge: t('fastest') || 'Fastest' },
@@ -65,12 +79,12 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
   ];
 
   // Dynamic final amount calculation for solo service
-  const standardRupeeTotal = computeTotal ? computeTotal(activeBooking) : (totalAmount || activeBooking?.total_amount || 350);
-  const finalBillRupees = billPreview ? billPreview.totalRupees : standardRupeeTotal;
+  const amountToPay = computeTotal ? computeTotal(currentBooking) : (totalAmount || currentBooking?.total_amount || 350);
+  const finalBillRupees = billPreview ? billPreview.totalRupees : amountToPay;
   const finalBillUsd = billPreview
     ? billPreview.finalAmountUsd
     : (Math.round((finalBillRupees * 100) / 85) / 100).toFixed(2);
-  const authorizedHoldUsd = activeBooking?.paypal_authorized_usd || billPreview?.authorizedAmountUsd || '1.45';
+  const authorizedHoldUsd = currentBooking?.paypal_authorized_usd || billPreview?.authorizedAmountUsd || '1.45';
 
   const handlePay = async () => {
     if (isProcessing || isCapturing) return; // Prevent double-tap!
@@ -78,8 +92,8 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
     if (isPayPal) {
       setIsCapturing(true);
       setCaptureError(null);
-      const bookingId = activeBooking?.paypal_booking_id || activeBooking?.bookingId;
-      const authorizationId = activeBooking?.paypal_authorization_id;
+      const bookingId = currentBooking?.paypal_booking_id || currentBooking?.bookingId || currentBooking?.booking_id;
+      const authorizationId = currentBooking?.paypal_authorization_id;
 
       try {
         const captureResult = await captureOrder({ bookingId, authorizationId });
@@ -95,7 +109,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
 
         navigation.navigate('PaymentSuccess', {
           booking: {
-            ...activeBooking,
+            ...currentBooking,
             paypal_capture_id: captureResult.captureId,
             paypal_capture_status: captureResult.captureStatus || captureResult.status,
             paypal_captured_usd: captureResult.capturedAmountUsd || finalBillUsd,
@@ -129,13 +143,54 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
         console.error('Payment completion err:', err);
       } finally {
         setIsProcessing(false);
-        navigation.navigate('PaymentSuccess', { booking: activeBooking });
+        navigation.navigate('PaymentSuccess', { booking: currentBooking });
       }
     }, 1000);
   };
 
-  const isExtraApproved = activeBooking?.extra_work?.approved;
-  const isHelperApproved = activeBooking?.second_worker || activeBooking?.helper_request?.status === 'approved';
+  const isExtraApproved = currentBooking?.extra_work?.approved;
+  const isHelperApproved = currentBooking?.second_worker || currentBooking?.helper_request?.status === 'approved';
+
+  if (!currentBooking) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Header
+          title={t('paymentSettlement') || 'Payment Settlement'}
+          showBack
+          onBack={() => navigation.navigate('Home')}
+        />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Ionicons name="card-outline" size={48} color={colors.primary} />
+          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary, marginTop: 16 }}>
+            No Active Bill Found
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 18 }}>
+            There is currently no active booking awaiting payment on this account.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 24, width: '100%', maxWidth: 360 }}>
+            <TouchableOpacity
+              style={[styles.payBtn, { flex: 1, paddingHorizontal: 16 }]}
+              onPress={() => navigation.navigate('Home')}
+            >
+              <Text style={styles.payBtnText}>Return to Home</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.payBtn, { flex: 1, paddingHorizontal: 16, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1' }]}
+              onPress={() => {
+                try {
+                  navigation.navigate('MainTabs', { screen: 'BookingsTab' });
+                } catch (e) {
+                  navigation.navigate('Home');
+                }
+              }}
+            >
+              <Text style={[styles.payBtnText, { color: '#334155' }]}>Past Bookings</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -152,7 +207,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
             {isPayPal ? 'TOTAL PAYABLE (FINAL SERVICE SETTLEMENT)' : t('totalPayable')}
           </Text>
           <Text style={styles.amountVal}>
-            {isPayPal ? `$${finalBillUsd} USD` : `₹${standardRupeeTotal}`}
+            {isPayPal ? `$${finalBillUsd} USD` : `₹${amountToPay}`}
           </Text>
           {isPayPal && (
             <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4, fontWeight: '600' }}>
@@ -167,7 +222,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
             </View>
           )}
           <View style={styles.bookingRefRow}>
-            <Text style={styles.bookingRefText}>{t('bookingId') || 'Booking ID'}: {activeBooking?.booking_id || 'BK84920'}</Text>
+            <Text style={styles.bookingRefText}>{t('bookingId') || 'Booking ID'}: {currentBooking?.booking_id || 'BK84920'}</Text>
             <View style={styles.verifiedTag}>
               <Ionicons name="checkmark-circle" size={12} color={colors.successDark} />
               <Text style={styles.verifiedTagText}>{t('workVerified') || 'Work Verified'}</Text>
@@ -182,12 +237,12 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
               <Ionicons name="card" size={20} color="#0070BA" />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={styles.paypalAuthBadgeTitle}>
-                  {activeBooking?.paypal_mode === 'SIMULATED'
+                  {currentBooking?.paypal_mode === 'SIMULATED'
                     ? 'PAYPAL SIMULATED AUTHORIZATION HOLD (DEMO)'
                     : 'PAYPAL SANDBOX AUTHORIZATION HOLD'}
                 </Text>
                 <Text style={styles.paypalAuthIdText}>
-                  Auth ID: {activeBooking.paypal_authorization_id}
+                  Auth ID: {currentBooking.paypal_authorization_id}
                 </Text>
               </View>
               <View style={styles.paypalStatusPill}>
@@ -205,7 +260,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
               <Text style={styles.paypalAuthDetailText}>
                 Payer:{' '}
                 <Text style={{ fontWeight: '700', color: '#0F172A' }}>
-                  {activeBooking.paypal_payer?.name || user?.name || 'Customer'}
+                  {currentBooking.paypal_payer?.name || user?.name || 'Customer'}
                 </Text>
               </Text>
             </View>
@@ -222,36 +277,36 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
           {/* Base Service Rate (Lead Artisan) */}
           <View style={styles.itemRow}>
             <Text style={styles.itemLabel}>
-              {activeBooking?.service?.name || t('homeService') || 'Home Service'} ({activeBooking?.worker_count > 1 ? `${t('leadArtisan') || 'Lead Artisan'}: ` : ''}{activeBooking?.trade_subtype || t('baseDiagnostic') || 'Base Diagnostic'})
+              {currentBooking?.service?.name || t('homeService') || 'Home Service'} ({currentBooking?.worker_count > 1 ? `${t('leadArtisan') || 'Lead Artisan'}: ` : ''}{currentBooking?.trade_subtype || t('baseDiagnostic') || 'Base Diagnostic'})
             </Text>
             <Text style={styles.itemVal}>
-              ₹{activeBooking?.worker_count > 1 ? (activeBooking?.single_worker_base || (activeBooking?.base_amount - (activeBooking?.extra_worker_cost || 0))) : (activeBooking?.base_amount || activeBooking?.service?.start_price || 299)}
+              ₹{currentBooking?.worker_count > 1 ? (currentBooking?.single_worker_base || (currentBooking?.base_amount - (currentBooking?.extra_worker_cost || 0))) : (currentBooking?.base_amount || currentBooking?.service?.start_price || 299)}
             </Text>
           </View>
 
           {/* Additional Multi-Artisans (Cleaner & Gardener up to 3) */}
-          {activeBooking?.worker_count > 1 && (
+          {currentBooking?.worker_count > 1 && (
             <View style={styles.itemRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                 <Ionicons name="people" size={13} color={colors.primary} style={{ marginRight: 4 }} />
                 <Text style={[styles.itemLabel, { color: colors.primary, fontWeight: '700' }]} numberOfLines={1}>
-                  +{activeBooking.worker_count - 1} {t('additionalCoopArtisans') || 'Additional Cooperative Artisans'} ({activeBooking.worker_count}x {t('speed') || 'Speed'})
+                  +{currentBooking.worker_count - 1} {t('additionalCoopArtisans') || 'Additional Cooperative Artisans'} ({currentBooking.worker_count}x {t('speed') || 'Speed'})
                 </Text>
               </View>
               <Text style={[styles.itemVal, { color: colors.primary, fontWeight: '800' }]}>
-                +₹{activeBooking?.extra_worker_cost || ((activeBooking.worker_count - 1) * 199)}
+                +₹{currentBooking?.extra_worker_cost || ((currentBooking.worker_count - 1) * 199)}
               </Text>
             </View>
           )}
 
           {/* Emergency Priority Surge */}
-          {activeBooking?.emergency_surge > 0 && (
+          {currentBooking?.emergency_surge > 0 && (
             <View style={styles.itemRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="flash" size={13} color={colors.error} style={{ marginRight: 4 }} />
                 <Text style={[styles.itemLabel, { color: colors.error }]}>{t('emergencySurgeFee') || 'Emergency Priority Surge'} (&lt;15 min)</Text>
               </View>
-              <Text style={[styles.itemVal, { color: colors.error }]}>+₹{activeBooking.emergency_surge}</Text>
+              <Text style={[styles.itemVal, { color: colors.error }]}>+₹{currentBooking.emergency_surge}</Text>
             </View>
           )}
 
@@ -261,26 +316,26 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                 <Ionicons name="construct" size={13} color={colors.primary} style={{ marginRight: 4 }} />
                 <Text style={styles.itemLabel} numberOfLines={1}>
-                  {activeBooking?.extra_work?.title || t('spares') || 'Approved Spare Parts'}
+                  {currentBooking?.extra_work?.title || t('spares') || 'Approved Spare Parts'}
                 </Text>
               </View>
               <Text style={[styles.itemVal, { color: colors.primary }]}>
-                +₹{activeBooking?.extra_work?.amount}
+                +₹{currentBooking?.extra_work?.amount}
               </Text>
             </View>
           )}
 
           {/* Procured Spare Part / Component (Phase I) */}
-          {activeBooking?.part_order?.part_cost > 0 && (
+          {currentBooking?.part_order?.part_cost > 0 && (
             <View style={styles.itemRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                 <Ionicons name="cog" size={13} color={colors.successDark} style={{ marginRight: 4 }} />
                 <Text style={styles.itemLabel} numberOfLines={1}>
-                  {activeBooking?.part_order?.part_name || 'Procured Replacement Component'}
+                  {currentBooking?.part_order?.part_name || 'Procured Replacement Component'}
                 </Text>
               </View>
               <Text style={[styles.itemVal, { color: colors.successDark, fontWeight: '800' }]}>
-                +₹{activeBooking.part_order.part_cost}
+                +₹{currentBooking.part_order.part_cost}
               </Text>
             </View>
           )}
@@ -291,37 +346,37 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                 <Ionicons name="people" size={13} color={colors.cooperativePurple} style={{ marginRight: 4 }} />
                 <Text style={styles.itemLabel} numberOfLines={1}>
-                  {t('secondAssistant') || '2nd Assistant Artisan'} ({activeBooking?.second_worker?.name || 'Amit Verma'})
+                  {t('secondAssistant') || '2nd Assistant Artisan'} ({currentBooking?.second_worker?.name || 'Amit Verma'})
                 </Text>
               </View>
               <Text style={[styles.itemVal, { color: colors.cooperativePurple }]}>
-                +₹{activeBooking?.helper_request?.amount || activeBooking?.service?.helper_request?.amount || 200}
+                +₹{currentBooking?.helper_request?.amount || currentBooking?.service?.helper_request?.amount || 200}
               </Text>
             </View>
           )}
 
           {/* Distance Travel Surcharge (>7 km: ₹7/km) */}
-          {activeBooking?.distance_charge > 0 && (
+          {currentBooking?.distance_charge > 0 && (
             <View style={styles.itemRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                 <Ionicons name="location" size={13} color="#0369A1" style={{ marginRight: 4 }} />
                 <View>
                   <Text style={[styles.itemLabel, { color: '#0369A1', fontWeight: '700' }]}>
-                    {t('distanceTravelSurcharge') || 'Distance Travel Surcharge'} ({activeBooking?.distance_km || activeBooking?.worker?.distance_km} km)
+                    {t('distanceTravelSurcharge') || 'Distance Travel Surcharge'} ({currentBooking?.distance_km || currentBooking?.worker?.distance_km} km)
                   </Text>
                   <Text style={{ fontSize: 10, color: colors.textMuted }}>
-                    Standard base covers up to 7 km • ₹7/km for {Math.max(0, Math.round((activeBooking?.distance_km || activeBooking?.worker?.distance_km || 7) - 7))} extra km
+                    Standard base covers up to 7 km • ₹7/km for {Math.max(0, Math.round((currentBooking?.distance_km || currentBooking?.worker?.distance_km || 7) - 7))} extra km
                   </Text>
                 </View>
               </View>
               <Text style={[styles.itemVal, { color: '#0369A1', fontWeight: '800' }]}>
-                +₹{activeBooking.distance_charge}
+                +₹{currentBooking.distance_charge}
               </Text>
             </View>
           )}
 
           {/* Overtime Surcharge (>2 Hours - Phase II) */}
-          {activeBooking?.overtime_charge > 0 && (
+          {currentBooking?.overtime_charge > 0 && (
             <View style={styles.itemRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="time" size={13} color="#D97706" style={{ marginRight: 4 }} />
@@ -330,13 +385,13 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
                 </Text>
               </View>
               <Text style={[styles.itemVal, { color: '#B45309', fontWeight: '800' }]}>
-                +₹{activeBooking.overtime_charge}
+                +₹{currentBooking.overtime_charge}
               </Text>
             </View>
           )}
 
           {/* Previous Booking Cancellation Penalty (Phase III) */}
-          {activeBooking?.cancellation_penalty_fee > 0 && (
+          {currentBooking?.cancellation_penalty_fee > 0 && (
             <View style={styles.itemRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="alert-circle" size={13} color={colors.danger} style={{ marginRight: 4 }} />
@@ -345,19 +400,19 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
                 </Text>
               </View>
               <Text style={[styles.itemVal, { color: colors.danger, fontWeight: '800' }]}>
-                +₹{activeBooking.cancellation_penalty_fee}
+                +₹{currentBooking.cancellation_penalty_fee}
               </Text>
             </View>
           )}
 
           {/* Welcome Discount */}
-          {activeBooking?.discount_applied > 0 && (
+          {currentBooking?.discount_applied > 0 && (
             <View style={styles.itemRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="gift" size={13} color={colors.successDark} style={{ marginRight: 4 }} />
                 <Text style={[styles.itemLabel, { color: colors.successDark }]}>{t('firstTimeDiscount') || 'First-Time User Welcome Discount'}</Text>
               </View>
-              <Text style={[styles.itemVal, { color: colors.successDark }]}>-₹{activeBooking.discount_applied}</Text>
+              <Text style={[styles.itemVal, { color: colors.successDark }]}>-₹{currentBooking.discount_applied}</Text>
             </View>
           )}
 
@@ -474,7 +529,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
               <Text style={styles.payBtnText}>
                 {isPayPal
                   ? `Settle Final Bill • $${finalBillUsd} USD`
-                  : `${t('payNow')} • ₹${standardRupeeTotal}`}
+                  : `${t('payNow')} • ₹${amountToPay}`}
               </Text>
             </View>
           )}
