@@ -59,6 +59,7 @@ export const AppNavigator = () => {
     return false;
   });
   const [payPalStatusText, setPayPalStatusText] = useState('Verifying PayPal Sandbox Authorization Hold...');
+  const [payPalAuthError, setPayPalAuthError] = useState(null);
   const [pendingNavigation, setPendingNavigation] = useState(null);
 
   // Set document.title on mount
@@ -118,14 +119,20 @@ export const AppNavigator = () => {
             if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
               window.history.replaceState({}, 'UniServ', window.location.pathname);
             }
-            if (draft.bookingRecord) {
-              setActiveBooking(draft.bookingRecord);
-            }
+            const rec = draft.bookingRecord || {
+              ...draft,
+              payment_method: 'PAYPAL_SANDBOX',
+              paypal_status: 'AUTHORIZED'
+            };
+            const last4 = draft.paypal_authorization_id ? String(draft.paypal_authorization_id).slice(-4) : 'none';
+            console.log(`PayPal authorize: ${draft.status} ${last4}`);
+            setActiveBooking(rec);
             setPendingNavigation({
               route: 'WorkerMatch',
               params: {
                 service: draft.service,
-                bookingType: draft.booking_type
+                bookingType: draft.booking_type,
+                booking: rec
               }
             });
             setPayPalProcessing(false);
@@ -156,6 +163,10 @@ export const AppNavigator = () => {
           }
 
           if (res.ok && data.success) {
+            // Temporary console log (no secrets): "PayPal authorize: <status> <last 4 chars of authorizationId>"
+            const last4 = data.authorizationId ? String(data.authorizationId).slice(-4) : 'none';
+            console.log(`PayPal authorize: ${data.status} ${last4}`);
+
             const bookingRecord = {
               ...(draft?.bookingRecord || draft || {}),
               booking_id: data.bookingId || targetBookingId,
@@ -164,7 +175,7 @@ export const AppNavigator = () => {
               paypal_authorization_id: data.authorizationId,
               paypal_mode: data.mode || 'REAL_SANDBOX',
               paypal_status: 'AUTHORIZED',
-              paypal_authorized_usd: draft?.authorizedAmountUsd || '4.40',
+              paypal_authorized_usd: draft?.authorizedAmountUsd || data.authorizedAmountUsd || '1.45',
               paypal_payer: draft?.payer || null,
               status: 'Booking Confirmed',
               statusIndex: 0
@@ -178,42 +189,46 @@ export const AppNavigator = () => {
               bookingRecord
             }));
 
+            // Persist directly to active booking storage
+            await AsyncStorage.setItem('@uniserv_active_booking', JSON.stringify(bookingRecord));
+
             setActiveBooking(bookingRecord);
             setPendingNavigation({
               route: 'WorkerMatch',
               params: {
                 service: bookingRecord.service,
-                bookingType: bookingRecord.booking_type
+                bookingType: bookingRecord.booking_type,
+                booking: bookingRecord
               }
             });
           } else {
             // Handle PayPal errors (ORDER_NOT_APPROVED, INSTRUMENT_DECLINED, etc.)
-            const errMsg = data.message || 'PayPal sandbox authorization failed.';
+            const errorName = data.error || 'AUTHORIZATION_FAILED';
             const debugId = data.debugId || 'none';
-            Alert.alert(
-              'PayPal Authorization Notice',
-              `${errMsg}\n(Debug ID: ${debugId})`
-            );
-            setPendingNavigation({
-              route: 'BookingForm',
-              params: {
-                service: draft?.service,
-                bookingType: draft?.booking_type,
-                restoredDraft: draft
-              }
+            const message = data.message || 'PayPal sandbox authorization failed.';
+            console.error(`PayPal authorize failed: ${errorName} (Debug ID: ${debugId})`);
+            setPayPalAuthError({
+              errorName,
+              debugId,
+              message,
+              draft
             });
+            setPayPalProcessing(false);
+            return;
           }
         }
       } catch (err) {
         console.error('PayPal return resolution error:', err);
-        Alert.alert(
-          'Payment Notice',
-          'Payment server not reachable. Please ensure the UniServ API server is running on port 5000.'
-        );
+        setPayPalAuthError({
+          errorName: 'SERVER_UNREACHABLE',
+          debugId: 'none',
+          message: 'Payment server not reachable. Please ensure the UniServ API server is running on port 5000.',
+          draft
+        });
         if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
           window.history.replaceState({}, 'UniServ', window.location.pathname);
         }
-        setPendingNavigation({ route: 'BookingForm' });
+        setPayPalProcessing(false);
       } finally {
         setPayPalProcessing(false);
       }
@@ -267,6 +282,53 @@ export const AppNavigator = () => {
         <Text style={styles.splashStatusText}>
           {payPalProcessing ? payPalStatusText : 'Initializing Cooperative Platform & Sandbox Services...'}
         </Text>
+      </View>
+    );
+  }
+
+  // PayPal Authorization Failure State: Show Error Name, Debug ID, and Try Again button
+  if (payPalAuthError) {
+    return (
+      <View style={styles.errorContainer}>
+        <View style={styles.errorCard}>
+          <View style={styles.errorIconCircle}>
+            <Ionicons name="alert-circle" size={42} color="#DC2626" />
+          </View>
+          <Text style={styles.errorHeaderTag}>PAYPAL SANDBOX PAYMENT NOTICE</Text>
+          <Text style={styles.errorTitle}>Authorization Unsuccessful</Text>
+          <View style={styles.errorBadgeRow}>
+            <View style={styles.errorNameBadge}>
+              <Text style={styles.errorNameBadgeText}>{payPalAuthError.errorName}</Text>
+            </View>
+            {payPalAuthError.debugId && payPalAuthError.debugId !== 'none' && (
+              <View style={styles.errorDebugBadge}>
+                <Text style={styles.errorDebugBadgeText}>Debug ID: {payPalAuthError.debugId}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.errorMessage}>{payPalAuthError.message}</Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={async () => {
+              const restored = payPalAuthError.draft;
+              setPayPalAuthError(null);
+              if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+                window.history.replaceState({}, 'UniServ', window.location.pathname);
+              }
+              setPendingNavigation({
+                route: 'BookingForm',
+                params: {
+                  service: restored?.service,
+                  bookingType: restored?.booking_type,
+                  restoredDraft: restored
+                }
+              });
+            }}
+          >
+            <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.retryBtnText}>Try Again (Restore Booking Draft)</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -402,6 +464,102 @@ const styles = StyleSheet.create({
     marginTop: 14,
     textAlign: 'center',
     letterSpacing: 0.2
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20
+  },
+  errorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 24,
+    width: '100%',
+    maxWidth: 440,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FEE2E2'
+  },
+  errorIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12
+  },
+  errorHeaderTag: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#DC2626',
+    letterSpacing: 0.8,
+    marginBottom: 4
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 10,
+    textAlign: 'center'
+  },
+  errorBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'center',
+    marginBottom: 12
+  },
+  errorNameBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  errorNameBadgeText: {
+    color: '#B91C1C',
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  errorDebugBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  errorDebugBadgeText: {
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  errorMessage: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20
+  },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    width: '100%'
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800'
   }
 });
 

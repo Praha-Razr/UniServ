@@ -25,7 +25,7 @@ export const Screen08_StartOTP = ({ route, navigation }) => {
 
   const handleWorkerEnteredOtp = () => {
     verifyStartOtp();
-    navigation.navigate('JobInProgress', { worker });
+    navigation.navigate('JobInProgress', { worker, booking: activeBooking });
   };
 
   const handleReportMismatch = () => {

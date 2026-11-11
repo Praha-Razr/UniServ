@@ -189,7 +189,7 @@ export const Screen07_LiveTracking = ({ route, navigation }) => {
   };
 
   const handleProceedToOtp = () => {
-    navigation.navigate('StartOTP', { worker });
+    navigation.navigate('StartOTP', { worker, booking: activeBooking });
   };
 
   const handleAcceptDelay = () => {

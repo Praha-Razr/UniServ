@@ -30,8 +30,10 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
   const [upiId, setUpiId] = useState('priya.sharma@okaxis');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const isPayPal = activeBooking?.payment_method === 'PAYPAL_SANDBOX' || Boolean(activeBooking?.paypal_authorization_id);
+
   const PAYMENT_METHODS = [
-    { id: 'UPI', label: t('instantUpi') || 'PayPal Sandbox (USD) / Cooperative Wallet', icon: 'flash', badge: t('fastest') || 'Fastest' },
+    { id: 'UPI', label: t('instantUpi') || 'Instant UPI / Cooperative Wallet', icon: 'flash', badge: t('fastest') || 'Fastest' },
     { id: 'Card', label: t('cardPayment') || 'Credit / Debit Card', icon: 'card', badge: null },
     { id: 'Wallet', label: t('coopWallet') || 'Cooperative Citizen Wallet', icon: 'wallet', badge: `₹500 ${t('balance') || 'Balance'}` },
     { id: 'Cash', label: t('codPayment') || 'Cash on Delivery', icon: 'cash', badge: null }
@@ -45,13 +47,13 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
     setTimeout(() => {
       try {
         if (typeof completePayment === 'function') {
-          completePayment(selectedMethod);
+          completePayment(isPayPal ? 'PAYPAL_SANDBOX' : selectedMethod);
         }
       } catch (err) {
         console.error('Payment completion err:', err);
       } finally {
         setIsProcessing(false);
-        navigation.navigate('PaymentSuccess');
+        navigation.navigate('PaymentSuccess', { booking: activeBooking });
       }
     }, 1000);
   };
@@ -70,8 +72,17 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Payable Amount Card */}
         <View style={styles.amountCard}>
-          <Text style={styles.amountLabel}>{t('totalPayable')}</Text>
-          <Text style={styles.amountVal}>₹{amountToPay}</Text>
+          <Text style={styles.amountLabel}>
+            {isPayPal ? 'PAYPAL AUTHORIZATION HOLD (FINAL SETTLEMENT)' : t('totalPayable')}
+          </Text>
+          <Text style={styles.amountVal}>
+            {isPayPal ? `$${activeBooking?.paypal_authorized_usd || '1.45'} USD` : `₹${amountToPay}`}
+          </Text>
+          {isPayPal && (
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4, fontWeight: '600' }}>
+              Equivalent to ₹{amountToPay} (Sandbox Demo Rate: 1 USD = 85 INR)
+            </Text>
+          )}
           <View style={styles.bookingRefRow}>
             <Text style={styles.bookingRefText}>{t('bookingId') || 'Booking ID'}: {activeBooking?.booking_id || 'BK84920'}</Text>
             <View style={styles.verifiedTag}>
@@ -80,6 +91,46 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
             </View>
           </View>
         </View>
+
+        {/* PayPal Sandbox Authorization Hold Banner */}
+        {isPayPal && (
+          <View style={styles.paypalAuthCard}>
+            <View style={styles.paypalAuthHeader}>
+              <Ionicons name="card" size={20} color="#0070BA" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.paypalAuthBadgeTitle}>
+                  {activeBooking?.paypal_mode === 'SIMULATED'
+                    ? 'PAYPAL SIMULATED AUTHORIZATION HOLD (DEMO)'
+                    : 'PAYPAL SANDBOX AUTHORIZATION HOLD'}
+                </Text>
+                <Text style={styles.paypalAuthIdText}>
+                  Auth ID: {activeBooking.paypal_authorization_id}
+                </Text>
+              </View>
+              <View style={styles.paypalStatusPill}>
+                <Text style={styles.paypalStatusPillText}>HELD IN SANDBOX</Text>
+              </View>
+            </View>
+            <View style={styles.paypalAuthDivider} />
+            <View style={styles.paypalAuthDetailsRow}>
+              <Text style={styles.paypalAuthDetailText}>
+                Authorized Ceiling:{' '}
+                <Text style={{ fontWeight: '800', color: '#0F172A' }}>
+                  ${activeBooking.paypal_authorized_usd || '1.45'} USD
+                </Text>
+              </Text>
+              <Text style={styles.paypalAuthDetailText}>
+                Payer:{' '}
+                <Text style={{ fontWeight: '700', color: '#0F172A' }}>
+                  {activeBooking.paypal_payer?.name || user?.name || 'Customer'}
+                </Text>
+              </Text>
+            </View>
+            <Text style={styles.paypalAuthNotice}>
+              Funds are held securely in PayPal Sandbox. Final settlement will capture against this authorization hold.
+            </Text>
+          </View>
+        )}
 
         {/* Itemized Cost Breakdown Card */}
         <View style={styles.itemizedCard}>
@@ -241,44 +292,68 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
         </View>
 
         {/* Payment Methods Selection */}
-        <Text style={[styles.sectionHeading, { marginTop: 8 }]}>{t('selectPayment')}</Text>
-        <View style={styles.methodsList}>
-          {PAYMENT_METHODS.map((method) => {
-            const isSelected = selectedMethod === method.id;
-            return (
-              <TouchableOpacity
-                key={method.id}
-                style={[styles.methodCard, isSelected && styles.methodCardSelected]}
-                onPress={() => setSelectedMethod(method.id)}
-                activeOpacity={0.75}
-              >
-                <View style={styles.methodLeft}>
-                  <View style={[styles.methodIconBox, isSelected && styles.methodIconBoxSelected]}>
-                    <Ionicons
-                      name={method.icon}
-                      size={20}
-                      color={isSelected ? colors.primary : colors.textSecondary}
-                    />
+        <Text style={[styles.sectionHeading, { marginTop: 8 }]}>
+          {isPayPal ? 'SECURED PAYMENT METHOD' : t('selectPayment')}
+        </Text>
+        {isPayPal ? (
+          <View style={styles.paypalSelectedCard}>
+            <View style={styles.paypalSelectedHeader}>
+              <Ionicons name="logo-paypal" size={26} color="#0070BA" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.paypalSelectedTitle}>PayPal Sandbox Pre-Authorized Hold</Text>
+                <Text style={styles.paypalSelectedSub}>
+                  Authorization ID: {activeBooking.paypal_authorization_id}
+                </Text>
+              </View>
+              <View style={styles.paypalActivePill}>
+                <Ionicons name="checkmark-circle" size={13} color="#16A34A" />
+                <Text style={styles.paypalActivePillText}>ACTIVE HOLD</Text>
+              </View>
+            </View>
+            <View style={styles.paypalSelectedDivider} />
+            <Text style={styles.paypalSelectedDesc}>
+              Settlement executes automatically against the active PayPal sandbox authorization hold (${activeBooking.paypal_authorized_usd || '1.45'} USD). Payer: {activeBooking.paypal_payer?.name || user?.name || 'Customer'}. No additional credentials or cards needed.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.methodsList}>
+            {PAYMENT_METHODS.map((method) => {
+              const isSelected = selectedMethod === method.id;
+              return (
+                <TouchableOpacity
+                  key={method.id}
+                  style={[styles.methodCard, isSelected && styles.methodCardSelected]}
+                  onPress={() => setSelectedMethod(method.id)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.methodLeft}>
+                    <View style={[styles.methodIconBox, isSelected && styles.methodIconBoxSelected]}>
+                      <Ionicons
+                        name={method.icon}
+                        size={20}
+                        color={isSelected ? colors.primary : colors.textSecondary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.methodLabel, isSelected && styles.methodLabelSelected]}>
+                        {method.label}
+                      </Text>
+                      {method.badge && (
+                        <Text style={styles.methodBadge}>{method.badge}</Text>
+                      )}
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.methodLabel, isSelected && styles.methodLabelSelected]}>
-                      {method.label}
-                    </Text>
-                    {method.badge && (
-                      <Text style={styles.methodBadge}>{method.badge}</Text>
-                    )}
+                  <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+                    {isSelected && <View style={styles.radioDot} />}
                   </View>
-                </View>
-                <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-                  {isSelected && <View style={styles.radioDot} />}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {/* If UPI is selected, show UPI ID field */}
-        {selectedMethod === 'UPI' && (
+        {!isPayPal && selectedMethod === 'UPI' && (
           <View style={styles.upiInputCard}>
             <Text style={styles.upiInputLabel}>{t('enterVpa') || 'Enter Virtual Payment Address (VPA)'}</Text>
             <View style={styles.upiInputWrap}>
@@ -303,7 +378,7 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
       {/* Sticky Bottom Pay Action */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
-          style={styles.payBtn}
+          style={[styles.payBtn, isPayPal && styles.payBtnPayPal]}
           onPress={handlePay}
           disabled={isProcessing}
           activeOpacity={0.85}
@@ -312,9 +387,11 @@ export const Screen12_PaymentScreen = ({ navigation }) => {
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <View style={styles.payBtnRow}>
-              <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+              <Ionicons name={isPayPal ? "logo-paypal" : "lock-closed"} size={16} color="#FFFFFF" />
               <Text style={styles.payBtnText}>
-                {t('payNow')} • ₹{amountToPay}
+                {isPayPal
+                  ? `Settle via PayPal Authorization Hold • $${activeBooking?.paypal_authorized_usd || '1.45'} USD`
+                  : `${t('payNow')} • ₹${amountToPay}`}
               </Text>
             </View>
           )}
@@ -575,6 +652,10 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4
   },
+  payBtnPayPal: {
+    backgroundColor: '#0070BA',
+    shadowColor: '#0070BA'
+  },
   payBtnRow: {
     flexDirection: 'row',
     alignItems: 'center'
@@ -584,6 +665,115 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     marginLeft: 8
+  },
+  paypalAuthCard: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#BAE6FD',
+    padding: 14,
+    marginBottom: 16
+  },
+  paypalAuthHeader: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  paypalAuthBadgeTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#0369A1',
+    letterSpacing: 0.5
+  },
+  paypalAuthIdText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 2
+  },
+  paypalStatusPill: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#7DD3FC'
+  },
+  paypalStatusPillText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#0284C7'
+  },
+  paypalAuthDivider: {
+    height: 1,
+    backgroundColor: '#E0F2FE',
+    marginVertical: 10
+  },
+  paypalAuthDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
+  paypalAuthDetailText: {
+    fontSize: 11,
+    color: '#64748B'
+  },
+  paypalAuthNotice: {
+    fontSize: 11,
+    color: '#0369A1',
+    lineHeight: 16,
+    fontStyle: 'italic'
+  },
+  paypalSelectedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#0070BA',
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#0070BA',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2
+  },
+  paypalSelectedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  paypalSelectedTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A'
+  },
+  paypalSelectedSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 2
+  },
+  paypalActivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  paypalActivePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#16A34A',
+    marginLeft: 3
+  },
+  paypalSelectedDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 10
+  },
+  paypalSelectedDesc: {
+    fontSize: 11,
+    color: '#475569',
+    lineHeight: 16
   }
 });
 

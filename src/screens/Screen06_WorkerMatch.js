@@ -20,14 +20,23 @@ import { getHyperLocalCooperative, getWorkersForTrade } from '../utils/locationS
 
 export const Screen06_WorkerMatch = ({ route, navigation }) => {
   const { service: routeService, bookingType } = route.params || {};
-  const { activeBooking, assignWorker } = useBooking();
+  const { activeBooking, assignWorker, setActiveBooking } = useBooking();
   const { user, t } = useUser();
-  const service = routeService || activeBooking?.service;
+  const routeBooking = route.params?.booking;
+  const currentBooking = activeBooking || routeBooking;
+  const service = routeService || currentBooking?.service;
 
   const [isSearching, setIsSearching] = useState(true);
   const [workerIndex, setWorkerIndex] = useState(0);
 
-  const userAddress = activeBooking?.address || user?.address;
+  // Sync routeBooking if activeBooking does not yet have paypal_authorization_id
+  useEffect(() => {
+    if (routeBooking?.paypal_authorization_id && (!activeBooking || !activeBooking.paypal_authorization_id)) {
+      setActiveBooking(routeBooking);
+    }
+  }, [routeBooking, activeBooking]);
+
+  const userAddress = currentBooking?.address || user?.address;
   const regionalCoop = useMemo(() => getHyperLocalCooperative(userAddress), [userAddress]);
   const pool = useMemo(
     () => getWorkersForTrade(service, userAddress),
@@ -47,7 +56,11 @@ export const Screen06_WorkerMatch = ({ route, navigation }) => {
     assignWorker(currentWorker);
     navigation.navigate('LiveTracking', {
       worker: currentWorker,
-      service
+      service,
+      booking: {
+        ...(currentBooking || {}),
+        worker: currentWorker
+      }
     });
   };
 
@@ -75,6 +88,46 @@ export const Screen06_WorkerMatch = ({ route, navigation }) => {
             {t('coopMatchingNotice')}
           </Text>
         </View>
+
+        {/* PayPal Sandbox Authorization Hold Banner (Visible immediately during search & post-match) */}
+        {Boolean(currentBooking?.paypal_authorization_id) && (
+          <View style={styles.paypalAuthCard}>
+            <View style={styles.paypalAuthHeader}>
+              <Ionicons name="card" size={20} color="#0070BA" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.paypalAuthBadgeTitle}>
+                  {currentBooking?.paypal_mode === 'SIMULATED'
+                    ? 'PAYPAL SIMULATED AUTHORIZATION HOLD (DEMO)'
+                    : 'PAYPAL SANDBOX AUTHORIZATION HOLD'}
+                </Text>
+                <Text style={styles.paypalAuthIdText}>
+                  Auth ID: {currentBooking.paypal_authorization_id}
+                </Text>
+              </View>
+              <View style={styles.paypalStatusPill}>
+                <Text style={styles.paypalStatusPillText}>HELD IN SANDBOX</Text>
+              </View>
+            </View>
+            <View style={styles.paypalAuthDivider} />
+            <View style={styles.paypalAuthDetailsRow}>
+              <Text style={styles.paypalAuthDetailText}>
+                Authorized Ceiling:{' '}
+                <Text style={{ fontWeight: '800', color: '#0F172A' }}>
+                  ${currentBooking.paypal_authorized_usd || '1.45'} USD
+                </Text>
+              </Text>
+              <Text style={styles.paypalAuthDetailText}>
+                Payer:{' '}
+                <Text style={{ fontWeight: '700', color: '#0F172A' }}>
+                  {currentBooking.paypal_payer?.name || user?.name || 'Customer'}
+                </Text>
+              </Text>
+            </View>
+            <Text style={styles.paypalAuthNotice}>
+              Authorization hold of ${currentBooking.paypal_authorized_usd || '1.45'} USD secured in PayPal sandbox. Final capture settles automatically upon work completion OTP verification.
+            </Text>
+          </View>
+        )}
 
         {isSearching ? (
           <View style={styles.searchingCard}>
@@ -141,46 +194,6 @@ export const Screen06_WorkerMatch = ({ route, navigation }) => {
                   : 'Review artisan profile, credentials, and transparent cooperative rate.'}
               </Text>
             </View>
-
-            {/* PayPal Sandbox Authorization Hold Banner (Amendment 7 & 8) */}
-            {activeBooking?.paypal_authorization_id && (
-              <View style={styles.paypalAuthCard}>
-                <View style={styles.paypalAuthHeader}>
-                  <Ionicons name="card" size={20} color="#0070BA" />
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.paypalAuthBadgeTitle}>
-                      {activeBooking?.paypal_mode === 'SIMULATED'
-                        ? 'PAYPAL SIMULATED AUTHORIZATION HOLD (DEMO)'
-                        : 'PAYPAL SANDBOX AUTHORIZATION HOLD'}
-                    </Text>
-                    <Text style={styles.paypalAuthIdText}>
-                      Auth ID: {activeBooking.paypal_authorization_id}
-                    </Text>
-                  </View>
-                  <View style={styles.paypalStatusPill}>
-                    <Text style={styles.paypalStatusPillText}>HELD IN SANDBOX</Text>
-                  </View>
-                </View>
-                <View style={styles.paypalAuthDivider} />
-                <View style={styles.paypalAuthDetailsRow}>
-                  <Text style={styles.paypalAuthDetailText}>
-                    Authorized Ceiling:{' '}
-                    <Text style={{ fontWeight: '800', color: '#0F172A' }}>
-                      ${activeBooking.paypal_authorized_usd || '4.40'} USD
-                    </Text>
-                  </Text>
-                  <Text style={styles.paypalAuthDetailText}>
-                    Payer:{' '}
-                    <Text style={{ fontWeight: '700', color: '#0F172A' }}>
-                      {activeBooking.paypal_payer?.name || user?.name || 'Customer'}
-                    </Text>
-                  </Text>
-                </View>
-                <Text style={styles.paypalAuthSubnote}>
-                  Pre-authorization hold placed via PayPal sandbox. Settlement capture occurs automatically upon job completion OTP verification.
-                </Text>
-              </View>
-            )}
 
             {/* Bulk Project Milestone Header Card if Bulk */}
             {activeBooking?.is_bulk_project && (

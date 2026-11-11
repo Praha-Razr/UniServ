@@ -170,7 +170,7 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
       navigation.navigate('Rating', { booking: activeBooking });
       return;
     }
-    navigation.navigate('CompletionOTP', { worker });
+    navigation.navigate('CompletionOTP', { worker, booking: activeBooking });
   };
 
   const handleApproveExtraParts = () => {

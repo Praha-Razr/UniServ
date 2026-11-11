@@ -44,7 +44,7 @@ export const Screen11_CompletionOTP = ({ navigation }) => {
         navigation.navigate('BulkPayment');
       }
     } else {
-      navigation.navigate('Payment');
+      navigation.navigate('Payment', { booking: activeBooking });
     }
   };
 

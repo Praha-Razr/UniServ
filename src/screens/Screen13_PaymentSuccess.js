@@ -17,34 +17,36 @@ import { useUser } from '../context/UserContext';
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import { getFallbackWorkerForTrade } from '../utils/locationService';
 
-export const Screen13_PaymentSuccess = ({ navigation }) => {
+export const Screen13_PaymentSuccess = ({ route, navigation }) => {
   const { activeBooking, totalAmount, computeTotal } = useBooking();
-  const { t } = useUser();
+  const { t, user } = useUser();
   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
 
-  const fallbackWorker = getFallbackWorkerForTrade(activeBooking?.service);
-  const amountPaid = computeTotal ? computeTotal(activeBooking) : (totalAmount || activeBooking?.total_amount || 500);
-  const bookingId = activeBooking?.booking_id || 'BK84920';
-  const serviceName = activeBooking?.service?.name || 'General Service';
-  const workerName = activeBooking?.worker?.name || fallbackWorker?.name || 'Cooperative Artisan';
-  const hasWarranty = activeBooking?.service?.has_seva_suraksha !== false;
+  const currentBooking = activeBooking || route.params?.booking;
+  const isPayPal = currentBooking?.payment_method === 'PAYPAL_SANDBOX' || Boolean(currentBooking?.paypal_authorization_id);
+  const fallbackWorker = getFallbackWorkerForTrade(currentBooking?.service);
+  const amountPaid = computeTotal ? computeTotal(currentBooking) : (totalAmount || currentBooking?.total_amount || 500);
+  const bookingId = currentBooking?.booking_id || 'BK84920';
+  const serviceName = currentBooking?.service?.name || 'General Service';
+  const workerName = currentBooking?.worker?.name || fallbackWorker?.name || 'Cooperative Artisan';
+  const hasWarranty = currentBooking?.service?.has_seva_suraksha !== false;
 
-  const baseRate = activeBooking?.worker_count > 1
-    ? (activeBooking?.single_worker_base || (activeBooking?.base_amount - (activeBooking?.extra_worker_cost || 0)))
-    : (activeBooking?.base_amount || activeBooking?.service?.start_price || 299);
-  const workerCount = activeBooking?.worker_count || 1;
-  const extraWorkerCost = activeBooking?.extra_worker_cost || ((workerCount - 1) * 199);
-  const emergencySurge = Number(activeBooking?.emergency_surge || 0);
-  const isExtraApproved = activeBooking?.extra_work && (activeBooking.extra_work.status === 'approved' || activeBooking.extra_work.approved);
-  const extraWorkCost = isExtraApproved ? Number(activeBooking.extra_work.amount || 0) : 0;
-  const partOrderCost = (activeBooking?.part_order && activeBooking.part_order.part_cost) ? Number(activeBooking.part_order.part_cost || 0) : 0;
-  const isHelperApproved = activeBooking?.second_worker || activeBooking?.helper_request?.status === 'approved';
-  const helperCost = isHelperApproved ? Number(activeBooking?.helper_request?.amount || activeBooking?.service?.helper_request?.amount || 200) : 0;
-  const overtimeCharge = Number(activeBooking?.overtime_charge || 0);
-  const distanceCharge = Number(activeBooking?.distance_charge || 0);
-  const distanceKm = Number(activeBooking?.distance_km ?? activeBooking?.worker?.distance_km ?? 0);
-  const cancellationPenalty = Number(activeBooking?.cancellation_penalty_fee || 0);
-  const discountApplied = Number(activeBooking?.discount_applied || 0);
+  const baseRate = currentBooking?.worker_count > 1
+    ? (currentBooking?.single_worker_base || (currentBooking?.base_amount - (currentBooking?.extra_worker_cost || 0)))
+    : (currentBooking?.base_amount || currentBooking?.service?.start_price || 299);
+  const workerCount = currentBooking?.worker_count || 1;
+  const extraWorkerCost = currentBooking?.extra_worker_cost || ((workerCount - 1) * 199);
+  const emergencySurge = Number(currentBooking?.emergency_surge || 0);
+  const isExtraApproved = currentBooking?.extra_work && (currentBooking.extra_work.status === 'approved' || currentBooking.extra_work.approved);
+  const extraWorkCost = isExtraApproved ? Number(currentBooking.extra_work.amount || 0) : 0;
+  const partOrderCost = (currentBooking?.part_order && currentBooking.part_order.part_cost) ? Number(currentBooking.part_order.part_cost || 0) : 0;
+  const isHelperApproved = currentBooking?.second_worker || currentBooking?.helper_request?.status === 'approved';
+  const helperCost = isHelperApproved ? Number(currentBooking?.helper_request?.amount || currentBooking?.service?.helper_request?.amount || 200) : 0;
+  const overtimeCharge = Number(currentBooking?.overtime_charge || 0);
+  const distanceCharge = Number(currentBooking?.distance_charge || 0);
+  const distanceKm = Number(currentBooking?.distance_km ?? currentBooking?.worker?.distance_km ?? 0);
+  const cancellationPenalty = Number(currentBooking?.cancellation_penalty_fee || 0);
+  const discountApplied = Number(currentBooking?.discount_applied || 0);
 
   const handleRateExperience = () => {
     navigation.navigate('RatingScreen');
@@ -89,7 +91,7 @@ export const Screen13_PaymentSuccess = ({ navigation }) => {
               <p><strong>Service Rendered:</strong> ${serviceName}</p>
               <p><strong>Lead Artisan:</strong> ${workerName}</p>
               <p><strong>Cooperative Society:</strong> Delhi Labour Cooperative Union</p>
-              <p><strong>Payment Mode:</strong> ${activeBooking?.payment_method || 'Instant UPI'}</p>
+              <p><strong>Payment Mode:</strong> ${isPayPal ? `PayPal Sandbox Authorization Hold (Auth ID: ${activeBooking?.paypal_authorization_id})` : (activeBooking?.payment_method || 'Instant UPI')}</p>
             </div>
 
             <table>
@@ -192,7 +194,7 @@ export const Screen13_PaymentSuccess = ({ navigation }) => {
     setInvoiceModalVisible(false);
   };
 
-  const isScheduledOrAdvance = activeBooking?.booking_type === 'scheduled' || !!activeBooking?.is_bulk_project || activeBooking?.scale_mode === 'bulk';
+  const isScheduledOrAdvance = currentBooking?.booking_type === 'scheduled' || !!currentBooking?.is_bulk_project || currentBooking?.scale_mode === 'bulk';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -205,13 +207,49 @@ export const Screen13_PaymentSuccess = ({ navigation }) => {
           <Text style={styles.successTitle}>
             {isScheduledOrAdvance ? (t('advancePaymentConfirmed') || 'Advance Payment Confirmed') : t('paymentSuccessful')}
           </Text>
-          <Text style={styles.paidAmountText}>₹{amountPaid}</Text>
+          <Text style={styles.paidAmountText}>
+            {isPayPal ? `$${currentBooking?.paypal_authorized_usd || '1.45'} USD` : `₹${amountPaid}`}
+          </Text>
+          {isPayPal && (
+            <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 2 }}>
+              (₹${amountPaid} settled via PayPal Sandbox Authorization Hold)
+            </Text>
+          )}
           <View style={styles.txnPill}>
             <Text style={styles.txnPillText}>
-              {isScheduledOrAdvance ? `${t('escrowRef') || 'Escrow Ref'}: UNISERV-ESCROW-${bookingId}` : `${t('txnRef') || 'Txn Ref'}: TXN-COOP-${bookingId}`}
+              {isPayPal
+                ? `PayPal Sandbox Auth ID: ${currentBooking?.paypal_authorization_id}`
+                : (isScheduledOrAdvance ? `${t('escrowRef') || 'Escrow Ref'}: UNISERV-ESCROW-${bookingId}` : `${t('txnRef') || 'Txn Ref'}: TXN-COOP-${bookingId}`)}
             </Text>
           </View>
         </View>
+
+        {/* PayPal Sandbox Authorization Settled Card */}
+        {isPayPal && (
+          <View style={styles.paypalSettledCard}>
+            <View style={styles.paypalSettledHeader}>
+              <Ionicons name="logo-paypal" size={22} color="#0070BA" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.paypalSettledBadgeTitle}>
+                  {currentBooking?.paypal_mode === 'SIMULATED'
+                    ? 'PAYPAL SIMULATED AUTHORIZATION SETTLED (DEMO)'
+                    : 'PAYPAL SANDBOX AUTHORIZATION SETTLED'}
+                </Text>
+                <Text style={styles.paypalSettledIdText}>
+                  Auth ID: {currentBooking.paypal_authorization_id}
+                </Text>
+              </View>
+              <View style={styles.paypalSettledPill}>
+                <Ionicons name="checkmark-done" size={13} color="#16A34A" />
+                <Text style={styles.paypalSettledPillText}>CAPTURED</Text>
+              </View>
+            </View>
+            <View style={styles.paypalSettledDivider} />
+            <Text style={styles.paypalSettledDesc}>
+              Settlement completed against authorized hold of ${currentBooking.paypal_authorized_usd || '1.45'} USD. Payer: {currentBooking.paypal_payer?.name || user?.name || 'Customer'}.
+            </Text>
+          </View>
+        )}
 
         {/* Advance Payment Confirmation & Team Contact Assurance Banner */}
         {isScheduledOrAdvance && (
@@ -701,6 +739,54 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginLeft: 6,
     flex: 1
+  },
+  paypalSettledCard: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#BAE6FD',
+    padding: 14,
+    marginBottom: 16
+  },
+  paypalSettledHeader: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  paypalSettledBadgeTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#0369A1',
+    letterSpacing: 0.5
+  },
+  paypalSettledIdText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 2
+  },
+  paypalSettledPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  paypalSettledPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#16A34A',
+    marginLeft: 3
+  },
+  paypalSettledDivider: {
+    height: 1,
+    backgroundColor: '#E0F2FE',
+    marginVertical: 10
+  },
+  paypalSettledDesc: {
+    fontSize: 11,
+    color: '#0369A1',
+    lineHeight: 16
   }
 });
 

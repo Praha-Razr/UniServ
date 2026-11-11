@@ -44,8 +44,28 @@ export const BookingProvider = ({ children }) => {
     const loadStoredBookings = async () => {
       try {
         const storedActive = await AsyncStorage.getItem('@uniserv_active_booking');
-        if (storedActive) {
-          setActiveBookingState(JSON.parse(storedActive));
+        const rawDraft = await AsyncStorage.getItem('@uniserv_paypal_booking_draft');
+        let activeObj = storedActive ? JSON.parse(storedActive) : null;
+        if (rawDraft) {
+          try {
+            const draft = JSON.parse(rawDraft);
+            if (draft && draft.status === 'AUTHORIZED' && draft.paypal_authorization_id) {
+              activeObj = {
+                ...(draft.bookingRecord || {}),
+                ...(activeObj || {}),
+                payment_method: 'PAYPAL_SANDBOX',
+                paypal_order_id: draft.orderId || activeObj?.paypal_order_id,
+                paypal_authorization_id: draft.paypal_authorization_id,
+                paypal_status: 'AUTHORIZED',
+                paypal_mode: draft.mode || activeObj?.paypal_mode || 'REAL_SANDBOX',
+                paypal_authorized_usd: draft.authorizedAmountUsd || activeObj?.paypal_authorized_usd || '1.45',
+                paypal_payer: draft.payer || activeObj?.paypal_payer
+              };
+            }
+          } catch (e) {}
+        }
+        if (activeObj) {
+          setActiveBookingState(activeObj);
         }
         const storedPast = await AsyncStorage.getItem('@uniserv_past_bookings');
         if (storedPast) {
@@ -83,7 +103,27 @@ export const BookingProvider = ({ children }) => {
   // Helper to persist active booking state
   const setActiveBooking = (updater) => {
     setActiveBookingState((prev) => {
-      const updated = typeof updater === 'function' ? updater(prev) : updater;
+      let updated;
+      if (typeof updater === 'function') {
+        updated = updater(prev);
+      } else if (updater && typeof updater === 'object') {
+        // Merge with prev to ensure paypal_* fields and existing booking data survive
+        updated = {
+          ...(prev || {}),
+          ...updater,
+          ...(prev?.paypal_authorization_id && !updater.paypal_authorization_id ? {
+            payment_method: prev.payment_method,
+            paypal_order_id: prev.paypal_order_id,
+            paypal_authorization_id: prev.paypal_authorization_id,
+            paypal_status: prev.paypal_status,
+            paypal_mode: prev.paypal_mode,
+            paypal_authorized_usd: prev.paypal_authorized_usd,
+            paypal_payer: prev.paypal_payer
+          } : {})
+        };
+      } else {
+        updated = updater;
+      }
       if (updated) {
         AsyncStorage.setItem('@uniserv_active_booking', JSON.stringify(updated)).catch((e) =>
           console.warn('Error saving active booking:', e)
@@ -214,7 +254,13 @@ export const BookingProvider = ({ children }) => {
       part_order: null,
       part_resume_otp: null,
       extra_work: null,
-      payment_method: null,
+      payment_method: bookingData.payment_method || null,
+      paypal_order_id: bookingData.paypal_order_id || null,
+      paypal_authorization_id: bookingData.paypal_authorization_id || null,
+      paypal_status: bookingData.paypal_status || null,
+      paypal_mode: bookingData.paypal_mode || null,
+      paypal_authorized_usd: bookingData.paypal_authorized_usd || null,
+      paypal_payer: bookingData.paypal_payer || null,
       payment_status: 'pending',
       payment_option: null,
       milestone1_paid: false,
@@ -231,11 +277,11 @@ export const BookingProvider = ({ children }) => {
   // 2. Assign Primary Worker
   const assignWorker = (worker) => {
     setActiveBooking(prev => {
-      if (!prev) return null;
-      const distKm = Number(worker?.distance_km ?? prev.distance_km ?? 0);
+      const base = prev || {};
+      const distKm = Number(worker?.distance_km ?? base.distance_km ?? 0);
       const distanceCharge = distKm > 7 ? Math.round((distKm - 7) * 7) : 0;
       const updated = {
-        ...prev,
+        ...base,
         worker,
         distance_km: distKm,
         distance_charge: distanceCharge,
@@ -565,11 +611,12 @@ export const BookingProvider = ({ children }) => {
     setActiveBooking(prev => {
       if (!prev) return null;
       const finalPaidTotal = computeTotal(prev);
+      const isPayPal = prev.payment_method === 'PAYPAL_SANDBOX' || Boolean(prev.paypal_authorization_id);
       return {
         ...prev,
         paid_amount: finalPaidTotal,
         total_amount: finalPaidTotal,
-        payment_method: method || 'UPI',
+        payment_method: isPayPal ? 'PAYPAL_SANDBOX' : (method || 'UPI'),
         payment_status: 'success',
         paid_at: new Date().toISOString()
       };
