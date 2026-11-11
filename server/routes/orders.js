@@ -17,6 +17,7 @@ const store = require('../store');
 const { validateAndBuildEvidence, computeEstimateAndHold, ValidationError } = require('../services/settlementService');
 const { deriveBillFromEvents } = require('../services/jobEventService');
 const paypalClient = require('../services/paypalClient');
+const payoutService = require('../services/payoutService');
 
 /**
  * POST /api/orders/create
@@ -248,6 +249,8 @@ router.post('/capture', async (req, res) => {
       status: booking.status,
       captureStatus: booking.captureStatus,
       mode: booking.mode,
+      paypalFeeUsd: booking.paypal_fee_usd || null,
+      payout: payoutService.sanitizePayoutRecord(booking),
       alreadyCaptured: true
     });
   }
@@ -336,11 +339,24 @@ router.post('/capture', async (req, res) => {
       captureStatus: captureResult.status,
       capturedCents: finalCents,
       capturedAmountUsd: finalAmountUsd,
+      paypal_fee_usd: captureResult.paypalFeeUsd || null,
       finalBillPaise: totalPaise,
       finalBillRupees: totalRupees,
       activeSeconds,
+      stage: '3.1',
+      payoutEligible: true,
       capturedAt: new Date().toISOString()
     });
+
+    // Phase 3, Stage 3.1: Trigger Payouts for COMPLETED REAL_SANDBOX captures
+    let payoutSummary = null;
+    if (isCompleted && captureResult.mode !== 'SIMULATED') {
+      try {
+        payoutSummary = await payoutService.executePayout(booking.bookingId);
+      } catch (payoutErr) {
+        console.error(`Automatic payout failed for booking ${booking.bookingId}:`, payoutErr.message || payoutErr);
+      }
+    }
 
     return res.status(200).json({
       success: true,
@@ -353,7 +369,9 @@ router.post('/capture', async (req, res) => {
       totalRupees,
       status: newStatus,
       captureStatus: captureResult.status,
-      mode: captureResult.mode
+      mode: captureResult.mode,
+      paypalFeeUsd: captureResult.paypalFeeUsd || null,
+      payout: payoutSummary
     });
   } catch (err) {
     const errorName = err.paypalError || err.name || 'CAPTURE_FAILED';

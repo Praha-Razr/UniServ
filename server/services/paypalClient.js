@@ -357,11 +357,160 @@ async function captureAuthorization({ authorizationId, amountUsd }) {
       throw err;
     }
 
+    const paypalFeeUsd = data.seller_receivable_breakdown?.paypal_fee?.value || null;
+
     return {
       captureId: data.id,
       status: data.status || 'COMPLETED',
       amount: data.amount ? data.amount.value : formattedAmount,
       currency: data.amount ? data.amount.currency_code : 'USD',
+      paypalFeeUsd,
+      mode: 'REAL_SANDBOX'
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Creates a payout batch in PayPal Sandbox.
+ *
+ * @param {object} params
+ * @param {string} params.senderBatchId - Unique deterministic ID (e.g. payout_<captureId>)
+ * @param {Array<object>} params.items - List of payout items
+ * @param {string} [params.emailSubject]
+ * @param {string} [params.emailMessage]
+ * @returns {Promise<{ payoutBatchId: string, batchStatus: string, timeCreated: string, mode: string }>}
+ */
+async function createPayoutBatch({ senderBatchId, items, emailSubject, emailMessage }) {
+  if (clientOverride && typeof clientOverride.createPayoutBatch === 'function') {
+    return clientOverride.createPayoutBatch({ senderBatchId, items, emailSubject, emailMessage });
+  }
+
+  if (!hasValidCredentials()) {
+    throw new Error('PayPal Sandbox credentials missing for payouts');
+  }
+
+  const token = await getAccessToken();
+
+  const formattedItems = (items || []).map((it) => ({
+    recipient_type: 'EMAIL',
+    amount: {
+      value: typeof it.amountUsd === 'number' ? it.amountUsd.toFixed(2) : String(it.amountUsd),
+      currency: 'USD'
+    },
+    receiver: it.receiver,
+    note: it.note || 'UniServ Cooperative Earnings Settlement',
+    sender_item_id: it.senderItemId
+  }));
+
+  const payload = {
+    sender_batch_header: {
+      sender_batch_id: senderBatchId,
+      email_subject: emailSubject || 'UniServ Cooperative Settlement Distribution',
+      email_message: emailMessage || 'You have received your cooperative settlement earnings from UniServ.'
+    },
+    items: formattedItems
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`${SANDBOX_BASE_URL}/v1/payments/payouts`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': senderBatchId
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    const debugId = res.headers.get('paypal-debug-id') || 'none';
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {}
+
+    if (!res.ok) {
+      const errorName = data.name || data.error || `HTTP_${res.status}`;
+      const finalDebugId = data.debug_id || debugId;
+      const err = new Error(`PayPal Payout Batch Failed: ${errorName}`);
+      err.paypalError = errorName;
+      err.debugId = finalDebugId;
+      throw err;
+    }
+
+    const batchHeader = data.batch_header || {};
+    return {
+      payoutBatchId: batchHeader.payout_batch_id,
+      batchStatus: batchHeader.batch_status || 'PENDING',
+      timeCreated: batchHeader.time_created,
+      mode: 'REAL_SANDBOX'
+    };
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      err.isTimeout = true;
+      err.paypalError = 'TIMEOUT';
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Retrieves details and item statuses for a payout batch.
+ *
+ * @param {string} payoutBatchId
+ * @returns {Promise<object>} Batch header and items
+ */
+async function getPayoutBatch(payoutBatchId) {
+  if (clientOverride && typeof clientOverride.getPayoutBatch === 'function') {
+    return clientOverride.getPayoutBatch(payoutBatchId);
+  }
+
+  if (!hasValidCredentials()) {
+    throw new Error('PayPal Sandbox credentials missing for payout status lookup');
+  }
+
+  const token = await getAccessToken();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`${SANDBOX_BASE_URL}/v1/payments/payouts/${encodeURIComponent(payoutBatchId)}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      signal: controller.signal
+    });
+
+    const debugId = res.headers.get('paypal-debug-id') || 'none';
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {}
+
+    if (!res.ok) {
+      const errorName = data.name || data.error || `HTTP_${res.status}`;
+      const finalDebugId = data.debug_id || debugId;
+      const err = new Error(`PayPal Payout Status Failed: ${errorName}`);
+      err.paypalError = errorName;
+      err.debugId = finalDebugId;
+      throw err;
+    }
+
+    return {
+      batchHeader: data.batch_header || {},
+      items: data.items || [],
+      links: data.links || [],
       mode: 'REAL_SANDBOX'
     };
   } finally {
@@ -375,6 +524,8 @@ module.exports = {
   createOrder,
   authorizeOrder,
   captureAuthorization,
+  createPayoutBatch,
+  getPayoutBatch,
   setClientOverride,
   resetClientOverride
 };

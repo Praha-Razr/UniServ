@@ -147,9 +147,61 @@ export async function captureOrder({ bookingId, authorizationId }) {
   return data;
 }
 
+/**
+ * Fetches payout split details and live statuses from the backend.
+ *
+ * @param {string} bookingId
+ * @returns {Promise<object|null>}
+ */
+export async function fetchPayoutDetails(bookingId) {
+  if (!bookingId) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/payouts/${encodeURIComponent(bookingId)}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) {
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('[Telemetry] Failed to fetch payout details:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Retries a failed or timed-out payout batch.
+ *
+ * @param {string} bookingId
+ * @returns {Promise<object>}
+ */
+export async function retryPayout(bookingId) {
+  if (!bookingId) throw new Error('Missing bookingId for payout retry');
+
+  const res = await fetch(`${API_BASE_URL}/api/payouts/${encodeURIComponent(bookingId)}/retry`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.message || 'Payout retry failed');
+    err.paypalError = data.error;
+    err.debugId = data.debugId;
+    throw err;
+  }
+  return data;
+}
+
 export default {
   isPayPalBooking,
   emitJobEvent,
   fetchBillPreview,
-  captureOrder
+  captureOrder,
+  fetchPayoutDetails,
+  retryPayout
 };

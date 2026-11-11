@@ -17,6 +17,17 @@ const express = require('express');
 const cors = require('cors');
 const ordersRouter = require('./routes/orders');
 const jobsRouter = require('./routes/jobs');
+const payoutsRouter = require('./routes/payouts');
+const { validateReceiverEmails } = require('./services/receiverValidation');
+
+// Validate receiver emails configuration on server boot (names only)
+const receiverValidation = validateReceiverEmails();
+if (!receiverValidation.valid) {
+  console.warn('Payouts Configuration Warning:');
+  for (const err of receiverValidation.errors) {
+    console.warn(`  - ${err}`);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -50,6 +61,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/orders', ordersRouter);
 app.use('/api/jobs', jobsRouter);
+app.use('/api/payouts', payoutsRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

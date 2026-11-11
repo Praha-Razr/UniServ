@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-  Platform
+  Platform,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -16,6 +17,7 @@ import { useBooking } from '../context/BookingContext';
 import { useUser } from '../context/UserContext';
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import { getFallbackWorkerForTrade } from '../utils/locationService';
+import { fetchPayoutDetails, retryPayout } from '../utils/jobTelemetry';
 
 export const Screen13_PaymentSuccess = ({ route, navigation }) => {
   const { activeBooking, totalAmount, computeTotal } = useBooking();
@@ -37,7 +39,58 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
 
   const fallbackWorker = getFallbackWorkerForTrade(currentBooking?.service);
   const amountPaid = computeTotal ? computeTotal(currentBooking) : (totalAmount || currentBooking?.total_amount || 500);
-  const bookingId = currentBooking?.booking_id || 'BK84920';
+  const bookingId = captureResult?.bookingId || currentBooking?.paypal_booking_id || currentBooking?.bookingId || currentBooking?.booking_id || 'BK84920';
+
+  // Payout State & Handlers (Stage 3.1)
+  const [payout, setPayout] = useState(captureResult?.payout || currentBooking?.payout || null);
+  const [isRefreshingPayout, setIsRefreshingPayout] = useState(false);
+  const [isRetryingPayout, setIsRetryingPayout] = useState(false);
+
+  useEffect(() => {
+    if (isPayPal && isCaptured && bookingId && bookingId !== 'BK84920') {
+      fetchPayoutDetails(bookingId).then((res) => {
+        if (res && (res.success || res.payoutStatus)) {
+          setPayout(res);
+        }
+      }).catch(() => {});
+    }
+  }, [isPayPal, isCaptured, bookingId]);
+
+  const handleRefreshPayout = async () => {
+    if (isRefreshingPayout || !bookingId) return;
+    setIsRefreshingPayout(true);
+    try {
+      const res = await fetchPayoutDetails(bookingId);
+      if (res && (res.success || res.payoutStatus)) {
+        setPayout(res);
+      }
+    } catch (err) {
+      console.warn('Failed to refresh payout status:', err);
+    } finally {
+      setIsRefreshingPayout(false);
+    }
+  };
+
+  const handleRetryPayout = async () => {
+    if (isRetryingPayout || !bookingId) return;
+    setIsRetryingPayout(true);
+    try {
+      const res = await retryPayout(bookingId);
+      if (res && (res.success || res.payoutStatus)) {
+        setPayout(res);
+      }
+    } catch (err) {
+      Alert.alert('Payout Retry Failed', err.message || 'Could not retry PayPal payout batch.');
+    } finally {
+      setIsRetryingPayout(false);
+    }
+  };
+
+  const paypalFee = captureResult?.paypalFeeUsd || currentBooking?.paypal_fee_usd || payout?.paypalFeeUsd || null;
+  const artisanPayout = payout?.items?.find((it) => it.role === 'artisan');
+  const welfarePayout = payout?.items?.find((it) => it.role === 'welfare');
+  const reservePayout = payout?.items?.find((it) => it.role === 'reserve');
+  const retainedAmountUsd = payout?.retainedAmountUsd || '0.00';
   const serviceName = currentBooking?.service?.name || 'General Service';
   const workerName = currentBooking?.worker?.name || fallbackWorker?.name || 'Cooperative Artisan';
   const hasWarranty = currentBooking?.service?.has_seva_suraksha !== false;
@@ -308,6 +361,191 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
                 ? 'Capture request submitted to PayPal Sandbox and is awaiting clearance.'
                 : `Settlement completed against authorized hold of $${holdCeilingUsd} USD. Payer: ${currentBooking.paypal_payer?.name || user?.name || 'Customer'}.`}
             </Text>
+          </View>
+        )}
+
+        {/* PayPal Sandbox Payouts (80/10/6/4 Split) Card */}
+        {isPayPal && (isCaptured || payout) && !isHoldForHuman && (
+          <View style={styles.payoutCard}>
+            <View style={styles.payoutHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Ionicons name="git-branch-outline" size={20} color="#0070BA" />
+                <View style={{ marginLeft: 8, flex: 1 }}>
+                  <Text style={styles.payoutHeaderTitle}>PAYPAL SANDBOX PAYOUTS</Text>
+                  <Text style={styles.payoutHeaderSub}>Automated 80/10/6/4 Cooperative Split</Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {payout?.payoutBatchId ? (
+                  <View style={styles.payoutBatchPill}>
+                    <Text style={styles.payoutBatchPillText}>
+                      Batch: ...{payout.payoutBatchId.slice(-4)}
+                    </Text>
+                  </View>
+                ) : null}
+
+                <TouchableOpacity
+                  style={styles.payoutRefreshBtn}
+                  onPress={handleRefreshPayout}
+                  disabled={isRefreshingPayout}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  {isRefreshingPayout ? (
+                    <ActivityIndicator size="small" color="#0070BA" />
+                  ) : (
+                    <Ionicons name="refresh" size={16} color="#0070BA" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.payoutDivider} />
+
+            {/* Item 1: Artisan Fair-Wage (80%) */}
+            <View style={styles.payoutItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payoutItemTitle}>Artisan Fair-Wage (80%)</Text>
+                <Text style={styles.payoutItemDesc}>Direct to cooperative artisan balance</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.payoutItemAmount}>
+                  ${artisanPayout?.amountUsd || (Number(capturedUsd) * 0.8).toFixed(2)} USD
+                </Text>
+                <View style={[
+                  styles.payoutItemStatusPill,
+                  artisanPayout?.status === 'SUCCESS' && styles.payoutStatusPaid,
+                  (artisanPayout?.status === 'FAILED' || artisanPayout?.status === 'FAILED_UNKNOWN') && styles.payoutStatusFailed
+                ]}>
+                  <Text style={[
+                    styles.payoutItemStatusText,
+                    artisanPayout?.status === 'SUCCESS' && styles.payoutStatusPaidText,
+                    (artisanPayout?.status === 'FAILED' || artisanPayout?.status === 'FAILED_UNKNOWN') && styles.payoutStatusFailedText
+                  ]}>
+                    {artisanPayout?.status === 'SUCCESS' ? 'PAID' : (artisanPayout?.status || (payout?.payoutStatus === 'SUCCESS' ? 'PAID' : (payout?.payoutStatus || 'PENDING')))}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Item 2: Cooperative Welfare Fund (10%) */}
+            <View style={styles.payoutItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payoutItemTitle}>Cooperative Welfare Fund (10%)</Text>
+                <Text style={styles.payoutItemDesc}>Artisan social security & health pool</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.payoutItemAmount}>
+                  ${welfarePayout?.amountUsd || (Number(capturedUsd) * 0.1).toFixed(2)} USD
+                </Text>
+                <View style={[
+                  styles.payoutItemStatusPill,
+                  welfarePayout?.status === 'SUCCESS' && styles.payoutStatusPaid,
+                  (welfarePayout?.status === 'FAILED' || welfarePayout?.status === 'FAILED_UNKNOWN') && styles.payoutStatusFailed
+                ]}>
+                  <Text style={[
+                    styles.payoutItemStatusText,
+                    welfarePayout?.status === 'SUCCESS' && styles.payoutStatusPaidText,
+                    (welfarePayout?.status === 'FAILED' || welfarePayout?.status === 'FAILED_UNKNOWN') && styles.payoutStatusFailedText
+                  ]}>
+                    {welfarePayout?.status === 'SUCCESS' ? 'PAID' : (welfarePayout?.status || (payout?.payoutStatus === 'SUCCESS' ? 'PAID' : (payout?.payoutStatus || 'PENDING')))}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Item 3: Emergency Reserve Fund (6%) */}
+            <View style={styles.payoutItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payoutItemTitle}>Emergency Reserve Fund (6%)</Text>
+                <Text style={styles.payoutItemDesc}>Equipment emergency & disaster protection</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.payoutItemAmount}>
+                  ${reservePayout?.amountUsd || (Number(capturedUsd) * 0.06).toFixed(2)} USD
+                </Text>
+                <View style={[
+                  styles.payoutItemStatusPill,
+                  reservePayout?.status === 'SUCCESS' && styles.payoutStatusPaid,
+                  (reservePayout?.status === 'FAILED' || reservePayout?.status === 'FAILED_UNKNOWN') && styles.payoutStatusFailed
+                ]}>
+                  <Text style={[
+                    styles.payoutItemStatusText,
+                    reservePayout?.status === 'SUCCESS' && styles.payoutStatusPaidText,
+                    (reservePayout?.status === 'FAILED' || reservePayout?.status === 'FAILED_UNKNOWN') && styles.payoutStatusFailedText
+                  ]}>
+                    {reservePayout?.status === 'SUCCESS' ? 'PAID' : (reservePayout?.status || (payout?.payoutStatus === 'SUCCESS' ? 'PAID' : (payout?.payoutStatus || 'PENDING')))}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Item 4: Platform Retained (4%) */}
+            <View style={styles.payoutItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payoutItemTitle}>RETAINED (not a PayPal payout)</Text>
+                <Text style={styles.payoutItemDesc}>Retained (before PayPal fees)</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.payoutItemAmount}>
+                  ${retainedAmountUsd} USD
+                </Text>
+                <View style={[styles.payoutItemStatusPill, { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' }]}>
+                  <Text style={[styles.payoutItemStatusText, { color: '#475569' }]}>
+                    RETAINED
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Optional Item 5: PayPal Sandbox Fee */}
+            {paypalFee ? (
+              <View style={[styles.payoutItemRow, { borderBottomWidth: 0 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.payoutItemTitle}>PayPal sandbox fee</Text>
+                  <Text style={styles.payoutItemDesc}>Deducted by PayPal from business balance</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.payoutItemAmount, { color: '#64748B' }]}>
+                    -${Number(paypalFee).toFixed(2)} USD
+                  </Text>
+                  <View style={[styles.payoutItemStatusPill, { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' }]}>
+                    <Text style={[styles.payoutItemStatusText, { color: '#64748B' }]}>
+                      FEE
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Failure Warning Box with Retry Button */}
+            {(payout?.payoutStatus === 'FAILED' || payout?.payoutStatus === 'FAILED_UNKNOWN') && (
+              <View style={styles.payoutFailureBox}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                  <Text style={styles.payoutFailureTitle}>Payout not completed</Text>
+                </View>
+                <Text style={styles.payoutFailureDesc}>
+                  Error: {payout.error?.errorName || 'PAYOUT_FAILED'}
+                  {payout.error?.debugId && payout.error.debugId !== 'none' ? ` (Debug ID: ${payout.error.debugId})` : ''}
+                </Text>
+                <TouchableOpacity
+                  style={styles.payoutRetryBtn}
+                  onPress={handleRetryPayout}
+                  disabled={isRetryingPayout}
+                  activeOpacity={0.8}
+                >
+                  {isRetryingPayout ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="reload" size={14} color="#FFFFFF" />
+                      <Text style={styles.payoutRetryBtnText}>Retry Payout</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
@@ -847,6 +1085,146 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#0369A1',
     lineHeight: 16
+  },
+  payoutCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#BAE6FD',
+    padding: 14,
+    marginBottom: 16,
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2
+  },
+  payoutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  payoutHeaderTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#0369A1',
+    letterSpacing: 0.5
+  },
+  payoutHeaderSub: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600'
+  },
+  payoutBatchPill: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BFDBFE'
+  },
+  payoutBatchPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1D4ED8'
+  },
+  payoutRefreshBtn: {
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD'
+  },
+  payoutDivider: {
+    height: 1,
+    backgroundColor: '#E0F2FE',
+    marginVertical: 10
+  },
+  payoutItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9'
+  },
+  payoutItemTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A'
+  },
+  payoutItemDesc: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1
+  },
+  payoutItemAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A'
+  },
+  payoutItemStatusPill: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginTop: 2
+  },
+  payoutItemStatusText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#B45309'
+  },
+  payoutStatusPaid: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#86EFAC'
+  },
+  payoutStatusPaidText: {
+    color: '#15803D'
+  },
+  payoutStatusFailed: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FCA5A5'
+  },
+  payoutStatusFailedText: {
+    color: '#DC2626'
+  },
+  payoutFailureBox: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    padding: 10,
+    marginTop: 10
+  },
+  payoutFailureTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#DC2626',
+    marginLeft: 4
+  },
+  payoutFailureDesc: {
+    fontSize: 11,
+    color: '#7F1D1D',
+    marginBottom: 8
+  },
+  payoutRetryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC2626',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    gap: 4
+  },
+  payoutRetryBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF'
   }
 });
 
