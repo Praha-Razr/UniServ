@@ -86,7 +86,11 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
     }
   };
 
-  const paypalFee = captureResult?.paypalFeeUsd || currentBooking?.paypal_fee_usd || payout?.paypalFeeUsd || null;
+  const rawFee = captureResult?.paypalFeeUsd || currentBooking?.paypal_fee_usd || payout?.paypalFeeUsd || null;
+  const paypalFee = (rawFee !== null && rawFee !== undefined && rawFee !== '' && !isNaN(Number(rawFee)) && Number(rawFee) > 0)
+    ? Number(rawFee).toFixed(2)
+    : null;
+  const payoutSkippedReason = captureResult?.payoutSkippedReason || currentBooking?.payoutSkippedReason || payout?.payoutSkippedReason || null;
   const artisanPayout = payout?.items?.find((it) => it.role === 'artisan');
   const welfarePayout = payout?.items?.find((it) => it.role === 'welfare');
   const reservePayout = payout?.items?.find((it) => it.role === 'reserve');
@@ -402,6 +406,16 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
 
             <View style={styles.payoutDivider} />
 
+            {/* Payout Skipped Notice */}
+            {payoutSkippedReason ? (
+              <View style={styles.payoutSkippedBox}>
+                <Ionicons name="information-circle-outline" size={16} color="#475569" />
+                <Text style={styles.payoutSkippedText}>
+                  Payout not run: {payoutSkippedReason}
+                </Text>
+              </View>
+            ) : null}
+
             {/* Item 1: Artisan Fair-Wage (80%) */}
             <View style={styles.payoutItemRow}>
               <View style={{ flex: 1 }}>
@@ -507,7 +521,7 @@ export const Screen13_PaymentSuccess = ({ route, navigation }) => {
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={[styles.payoutItemAmount, { color: '#64748B' }]}>
-                    -${Number(paypalFee).toFixed(2)} USD
+                    -${paypalFee} USD
                   </Text>
                   <View style={[styles.payoutItemStatusPill, { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' }]}>
                     <Text style={[styles.payoutItemStatusText, { color: '#64748B' }]}>
@@ -1225,6 +1239,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF'
+  },
+  payoutSkippedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 8,
+    marginBottom: 8,
+    gap: 6
+  },
+  payoutSkippedText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+    flex: 1
   }
 });
 

@@ -250,6 +250,7 @@ router.post('/capture', async (req, res) => {
       captureStatus: booking.captureStatus,
       mode: booking.mode,
       paypalFeeUsd: booking.paypal_fee_usd || null,
+      payoutSkippedReason: booking.payoutSkippedReason || null,
       payout: payoutService.sanitizePayoutRecord(booking),
       alreadyCaptured: true
     });
@@ -350,12 +351,26 @@ router.post('/capture', async (req, res) => {
 
     // Phase 3, Stage 3.1: Trigger Payouts for COMPLETED REAL_SANDBOX captures
     let payoutSummary = null;
-    if (isCompleted && captureResult.mode !== 'SIMULATED') {
+    let payoutSkippedReason = null;
+
+    if (!isCompleted) {
+      payoutSkippedReason = `Capture status is ${captureResult.status || 'not COMPLETED'}`;
+    } else if (captureResult.mode === 'SIMULATED') {
+      payoutSkippedReason = 'Booking was processed in SIMULATED mode';
+    } else {
       try {
         payoutSummary = await payoutService.executePayout(booking.bookingId);
+        if (payoutSummary && (payoutSummary.refused || payoutSummary.error)) {
+          payoutSkippedReason = payoutSummary.message || payoutSummary.error;
+        }
       } catch (payoutErr) {
         console.error(`Automatic payout failed for booking ${booking.bookingId}:`, payoutErr.message || payoutErr);
+        payoutSkippedReason = payoutErr.message || 'Payout service error';
       }
+    }
+
+    if (payoutSkippedReason) {
+      store.updateBooking(booking.bookingId, { payoutSkippedReason });
     }
 
     return res.status(200).json({
@@ -371,6 +386,7 @@ router.post('/capture', async (req, res) => {
       captureStatus: captureResult.status,
       mode: captureResult.mode,
       paypalFeeUsd: captureResult.paypalFeeUsd || null,
+      payoutSkippedReason: payoutSkippedReason || null,
       payout: payoutSummary
     });
   } catch (err) {

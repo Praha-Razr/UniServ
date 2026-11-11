@@ -51,6 +51,7 @@ function sanitizePayoutRecord(booking) {
     captureId: booking.captureId,
     payoutBatchId: booking.payoutBatchId || null,
     payoutStatus: booking.payoutStatus || null,
+    payoutSkippedReason: booking.payoutSkippedReason || null,
     retainedCents: booking.payoutRetainedCents ?? 0,
     retainedAmountUsd: booking.payoutRetainedAmountUsd || '0.00',
     paypalFeeUsd: booking.paypal_fee_usd || null,
@@ -88,31 +89,37 @@ async function executePayout(bookingId) {
 
   // 3. Status checks: Must be CAPTURED with COMPLETED status
   if (booking.status !== 'CAPTURED' || booking.captureStatus !== 'COMPLETED') {
+    const message = `Cannot execute payout for booking with status "${booking.status}" (captureStatus: "${booking.captureStatus}")`;
+    store.updateBooking(bookingId, { payoutSkippedReason: message });
     return {
       success: false,
       refused: true,
       error: 'INVALID_STATUS',
-      message: `Cannot execute payout for booking with status "${booking.status}" (captureStatus: "${booking.captureStatus}")`
+      message
     };
   }
 
   // 4. Never run payouts for SIMULATED bookings
   if (booking.mode === 'SIMULATED') {
+    const message = 'Payouts are not run for SIMULATED bookings';
+    store.updateBooking(bookingId, { payoutSkippedReason: message });
     return {
       success: false,
       refused: true,
       error: 'SIMULATED_MODE',
-      message: 'Payouts are not run for SIMULATED bookings'
+      message
     };
   }
 
   // 5. Stage 3.1 eligibility check: Do not run payouts for bookings captured prior to Stage 3.1
   if (!booking.payoutEligible && booking.stage !== '3.1') {
+    const message = 'Cannot execute payout for bookings captured prior to Stage 3.1';
+    store.updateBooking(bookingId, { payoutSkippedReason: message });
     return {
       success: false,
       refused: true,
       error: 'PRE_STAGE_3_BOOKING',
-      message: 'Cannot execute payout for bookings captured prior to Stage 3.1'
+      message
     };
   }
 

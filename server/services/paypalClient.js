@@ -357,7 +357,20 @@ async function captureAuthorization({ authorizationId, amountUsd }) {
       throw err;
     }
 
-    const paypalFeeUsd = data.seller_receivable_breakdown?.paypal_fee?.value || null;
+    // Extract PayPal fee from seller_receivable_breakdown if present
+    let rawFee = null;
+    if (data.seller_receivable_breakdown?.paypal_fee?.value) {
+      rawFee = data.seller_receivable_breakdown.paypal_fee.value;
+    } else if (typeof data.seller_receivable_breakdown?.paypal_fee === 'string') {
+      rawFee = data.seller_receivable_breakdown.paypal_fee;
+    } else if (data.purchase_units?.[0]?.payments?.captures?.[0]?.seller_receivable_breakdown?.paypal_fee?.value) {
+      rawFee = data.purchase_units[0].payments.captures[0].seller_receivable_breakdown.paypal_fee.value;
+    }
+
+    const parsedFeeNum = rawFee !== null && rawFee !== undefined && rawFee !== '' ? Number(rawFee) : NaN;
+    const paypalFeeUsd = (!isNaN(parsedFeeNum) && parsedFeeNum > 0)
+      ? parsedFeeNum.toFixed(2)
+      : null;
 
     return {
       captureId: data.id,

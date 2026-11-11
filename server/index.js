@@ -15,6 +15,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const express = require('express');
 const cors = require('cors');
+const store = require('./store');
 const ordersRouter = require('./routes/orders');
 const jobsRouter = require('./routes/jobs');
 const payoutsRouter = require('./routes/payouts');
@@ -74,8 +75,22 @@ app.use((err, req, res, next) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`UniServ API Server running on port ${PORT}`);
-  console.log(`CORS restricted to: ${clientOrigin}`);
+  const storePath = store.getStorePath();
+  const loadedBookings = Object.keys(store.readAll()).length;
+  const receiverStatus = receiverValidation.valid
+    ? 'YES (Distinct variables: PAYPAL_RECEIVER_ARTISAN_EMAIL, PAYPAL_RECEIVER_WELFARE_EMAIL, PAYPAL_RECEIVER_RESERVE_EMAIL)'
+    : `NO (${receiverValidation.errors.join('; ')})`;
+
+  console.log('================================================================================');
+  console.log('                    UniServ Platform Backend Server                             ');
+  console.log('================================================================================');
+  console.log(` Code Stage:                 Phase 3.1b (Isolated Store & Split Payouts)`);
+  console.log(` Store Path:                 ${storePath}`);
+  console.log(` Bookings Loaded:            ${loadedBookings}`);
+  console.log(` Receiver Variables Valid:   ${receiverStatus}`);
+  console.log(` Server Port:                ${PORT}`);
+  console.log(` CORS Restricted To:         ${clientOrigin}`);
+  console.log('================================================================================');
 });
 
 module.exports = { app, server };

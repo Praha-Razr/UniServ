@@ -11,7 +11,22 @@ const {
 } = require('../server/services/settlementService');
 const { legacyComputeTotal } = require('./legacyComputeTotal');
 const paypalClient = require('../server/services/paypalClient');
+const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const store = require('../server/store');
+
+// Isolate test store in temporary directory
+const stage2TempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'uniserv-stage2-'));
+const stage2StoreFile = path.join(stage2TempDir, 'bookings.json');
+store.setStorePath(stage2StoreFile);
+
+test.after(() => {
+  store.resetStorePath();
+  try {
+    fs.rmSync(stage2TempDir, { recursive: true, force: true });
+  } catch (e) {}
+});
 
 // ============================================================================
 // 1. EVENT STATE MACHINE & ORDERING TESTS

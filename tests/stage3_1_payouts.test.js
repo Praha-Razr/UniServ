@@ -20,7 +20,22 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
+const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const store = require('../server/store');
+
+// Isolate test store in temporary directory
+const stage3TempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'uniserv-stage3-'));
+const stage3StoreFile = path.join(stage3TempDir, 'bookings.json');
+store.setStorePath(stage3StoreFile);
+
+test.after(() => {
+  store.resetStorePath();
+  try {
+    fs.rmSync(stage3TempDir, { recursive: true, force: true });
+  } catch (e) {}
+});
 const { splitCents } = require('../src/utils/settlementEngine');
 const { validateReceiverEmails } = require('../server/services/receiverValidation');
 const payoutService = require('../server/services/payoutService');
@@ -420,6 +435,8 @@ test('Stage 3.1: Refuses payout for CAPTURE_PENDING, HOLD_FOR_HUMAN, and SIMULAT
   const res3 = await payoutService.executePayout(simId);
   assert.strictEqual(res3.success, false);
   assert.strictEqual(res3.error, 'SIMULATED_MODE');
+  const storedSim = store.getBooking(simId);
+  assert.strictEqual(storedSim.payoutSkippedReason, 'Payouts are not run for SIMULATED bookings');
 });
 
 test('Stage 3.1: Refuses payout for pre-Stage 3.1 bookings (PRE_STAGE_3_BOOKING)', async () => {
@@ -436,6 +453,8 @@ test('Stage 3.1: Refuses payout for pre-Stage 3.1 bookings (PRE_STAGE_3_BOOKING)
   const res = await payoutService.executePayout(oldId);
   assert.strictEqual(res.success, false);
   assert.strictEqual(res.error, 'PRE_STAGE_3_BOOKING');
+  const storedOld = store.getBooking(oldId);
+  assert.strictEqual(storedOld.payoutSkippedReason, 'Cannot execute payout for bookings captured prior to Stage 3.1');
 });
 
 // ============================================================================
@@ -561,5 +580,78 @@ test('Stage 3.1: Status refresh maps PayPal transaction statuses to items', asyn
     assert.strictEqual(refreshed.items[2].status, 'UNCLAIMED');
   } finally {
     paypalClient.getPayoutBatch = origGetBatch;
+  }
+});
+
+test('Stage 3.1: PayPal fee extraction parses seller_receivable_breakdown and handles null gracefully', async () => {
+  const origCapture = paypalClient.captureAuthorization;
+
+  // Case A: PayPal returns fee
+  paypalClient.captureAuthorization = async () => ({
+    captureId: 'CAP_FEE_TEST',
+    status: 'COMPLETED',
+    amount: '10.00',
+    currency: 'USD',
+    paypalFeeUsd: '0.45',
+    mode: 'REAL_SANDBOX'
+  });
+
+  const captureHandler = getRouteHandler(ordersRouter, 'POST', '/capture');
+  const bookingIdA = 'BK_FEE_A';
+  store.saveBooking({
+    bookingId: bookingIdA,
+    orderId: 'ORD_FEE_A',
+    authorizationId: 'AUTH_FEE_A',
+    status: 'AUTHORIZED',
+    authorizedCents: 1000,
+    authorizedAmountUsd: '10.00',
+    evidence: { service: { id: 's1', start_price: 299 } },
+    events: [
+      { type: 'start', timestamp: '2026-11-11T10:00:00.000Z' },
+      { type: 'complete', timestamp: '2026-11-11T10:10:00.000Z' }
+    ],
+    mode: 'REAL_SANDBOX'
+  });
+
+  try {
+    const { res: resA, state: stateA } = createMockRes();
+    await captureHandler({ body: { bookingId: bookingIdA } }, resA);
+    assert.strictEqual(stateA.statusCode, 200);
+    assert.strictEqual(stateA.data.paypalFeeUsd, '0.45');
+    assert.strictEqual(store.getBooking(bookingIdA).paypal_fee_usd, '0.45');
+
+    // Case B: PayPal omits fee (null)
+    paypalClient.captureAuthorization = async () => ({
+      captureId: 'CAP_NO_FEE_TEST',
+      status: 'COMPLETED',
+      amount: '10.00',
+      currency: 'USD',
+      paypalFeeUsd: null,
+      mode: 'REAL_SANDBOX'
+    });
+
+    const bookingIdB = 'BK_FEE_B';
+    store.saveBooking({
+      bookingId: bookingIdB,
+      orderId: 'ORD_FEE_B',
+      authorizationId: 'AUTH_FEE_B',
+      status: 'AUTHORIZED',
+      authorizedCents: 1000,
+      authorizedAmountUsd: '10.00',
+      evidence: { service: { id: 's1', start_price: 299 } },
+      events: [
+        { type: 'start', timestamp: '2026-11-11T10:00:00.000Z' },
+        { type: 'complete', timestamp: '2026-11-11T10:10:00.000Z' }
+      ],
+      mode: 'REAL_SANDBOX'
+    });
+
+    const { res: resB, state: stateB } = createMockRes();
+    await captureHandler({ body: { bookingId: bookingIdB } }, resB);
+    assert.strictEqual(stateB.statusCode, 200);
+    assert.strictEqual(stateB.data.paypalFeeUsd, null);
+    assert.strictEqual(store.getBooking(bookingIdB).paypal_fee_usd, null);
+  } finally {
+    paypalClient.captureAuthorization = origCapture;
   }
 });
