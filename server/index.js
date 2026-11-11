@@ -21,6 +21,7 @@ const jobsRouter = require('./routes/jobs');
 const payoutsRouter = require('./routes/payouts');
 const aiRouter = require('./routes/ai');
 const settlementRouter = require('./routes/settlement');
+const ledgerRouter = require('./routes/ledgerApi');
 const { validateReceiverEmails } = require('./services/receiverValidation');
 
 // Validate receiver emails configuration on server boot (names only)
@@ -67,6 +68,13 @@ app.use('/api/jobs', jobsRouter);
 app.use('/api/payouts', payoutsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/settlement', settlementRouter);
+app.use('/api/ledger', ledgerRouter);
+
+// Serve static assets for Co-op Treasury Ledger
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/ledger', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'ledger.html'));
+});
 
 // Global Error Handler
 app.use((err, req, res, next) => {

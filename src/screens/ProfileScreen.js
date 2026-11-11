@@ -6,7 +6,9 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Modal
+  Modal,
+  Linking,
+  Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +17,7 @@ import { useUser } from '../context/UserContext';
 import { useBooking } from '../context/BookingContext';
 import Header from '../components/Header';
 import LanguageSelectorModal from '../components/LanguageSelectorModal';
+import { API_BASE_URL } from '../config/api';
 
 export const ProfileScreen = ({ navigation }) => {
   const { user, language, setLanguage, logout, t } = useUser();
@@ -55,6 +58,15 @@ export const ProfileScreen = ({ navigation }) => {
       setTimeout(() => setResetNotice(null), 4000);
     } catch (e) {
       console.error('Error resetting demo state:', e);
+    }
+  };
+
+  const handleOpenLedger = () => {
+    const url = `${API_BASE_URL}/ledger`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(url, '_blank');
+    } else {
+      Linking.openURL(url).catch((err) => console.error('Error opening ledger URL:', err));
     }
   };
 
@@ -173,6 +185,26 @@ export const ProfileScreen = ({ navigation }) => {
               <Text style={styles.resetNoticeText}>{resetNotice}</Text>
             </View>
           ) : null}
+
+          {/* View Co-op Treasury Ledger */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleOpenLedger}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.iconCircle, { backgroundColor: '#EDE9FE' }]}>
+                <Ionicons name="bar-chart-outline" size={20} color="#6366F1" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.menuItemTitle}>View Co-op Treasury Ledger</Text>
+                <Text style={styles.menuItemSub}>
+                  Live transparent PayPal sandbox ledger, artisan wages & welfare reserve
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="open-outline" size={18} color="#6366F1" />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
