@@ -171,6 +171,8 @@ async function callGemini({
         simulated: !!mockResult.simulated,
         text: mockResult.text || (mockResult.candidates?.[0]?.content?.parts?.[0]?.text ?? null),
         functionCall: mockResult.functionCall || null,
+        parts: mockResult.parts || (mockResult.candidates?.[0]?.content?.parts ?? []),
+        content: mockResult.content || (mockResult.candidates?.[0]?.content ?? null),
         raw: mockResult
       };
     } catch (mockErr) {
@@ -252,6 +254,8 @@ async function callGemini({
           simulated: false,
           text: textPart?.text || null,
           functionCall: fcPart?.functionCall || null,
+          parts: parts,
+          content: candidate?.content || null,
           raw: data
         };
       }
