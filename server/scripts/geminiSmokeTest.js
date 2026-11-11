@@ -1,24 +1,88 @@
 /**
  * ============================================================================
- * Gemini API Connectivity Smoke Test (Stage 4.0)
+ * Gemini API Connectivity & Diagnostics Smoke Test (Stage 4.0b)
  * ============================================================================
- * Reads GEMINI_API_KEY and GEMINI_MODEL from server/.env, sends one minimal
- * text request via direct REST, and prints ONLY:
- *  - "OK" on success
- *  - Error name, HTTP status, and Request ID on failure
+ * Reads GEMINI_API_KEY and GEMINI_MODEL from server/.env.
  *
- * SECURITY & RUNTIME CONSTRAINTS:
- *  - No hardcoded model name.
- *  - Never prints or logs the API key or model response text.
- *  - If any variable is missing, prints only the variable name.
+ * DIAGNOSTICS SUITE:
+ *  Step 1: Models Discovery (GET /v1beta/models?pageSize=100)
+ *          Verifies key validity, DNS, connectivity, and reports if
+ *          GEMINI_MODEL is found in the account's accessible model catalog.
+ *  Step 2: Minimal Generation (POST /v1beta/models/{model}:generateContent)
+ *          Sends minimal prompt with thinking minimized (thinkingBudget: 0)
+ *          via generationConfig.thinkingConfig.
+ *          Reports latency, finishReason, and whether output was empty/truncated.
+ *
+ * SAFETY CONSTRAINTS:
+ *  - 60-second AbortController timeout on requests.
+ *  - Distinguishes DNS, connection timeout, reset, and read timeout with err.cause.code.
+ *  - Never prints URLs containing keys.
+ *  - Never prints the API key or response text.
  *  - Strictly sets process.exitCode (never calls process.exit()).
- *  - 20-second AbortController timeout for Windows handle stability.
  * ============================================================================
  */
 
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
+
+/**
+ * Formats low-level fetch/undici network errors without leaking URLs or keys.
+ * @param {Error} err
+ * @param {number} elapsedMs
+ * @param {number} timeoutLimitMs
+ * @returns {{ type: string, detail: string, code: string }}
+ */
+function formatNetworkError(err, elapsedMs, timeoutLimitMs = 60000) {
+  const causeCode = err?.cause?.code || err?.code || null;
+  const isAbort = err?.name === 'AbortError' || err?.message?.toLowerCase().includes('aborted');
+
+  if (isAbort && elapsedMs >= timeoutLimitMs - 1500) {
+    return {
+      type: 'READ_TIMEOUT',
+      detail: `Connected but no response within ${Math.round(timeoutLimitMs / 1000)}s`,
+      code: 'UND_ERR_HEADERS_TIMEOUT'
+    };
+  }
+
+  if (causeCode === 'ENOTFOUND') {
+    return {
+      type: 'DNS_FAILURE',
+      detail: 'DNS resolution failed (host not found)',
+      code: causeCode
+    };
+  }
+
+  if (causeCode === 'UND_ERR_CONNECT_TIMEOUT' || causeCode === 'ETIMEDOUT') {
+    return {
+      type: 'CONNECT_TIMEOUT',
+      detail: 'TCP connection timed out',
+      code: causeCode
+    };
+  }
+
+  if (causeCode === 'ECONNRESET') {
+    return {
+      type: 'CONNECTION_RESET',
+      detail: 'Connection reset by peer',
+      code: causeCode
+    };
+  }
+
+  if (causeCode === 'ECONNREFUSED') {
+    return {
+      type: 'CONNECTION_REFUSED',
+      detail: 'Connection refused by peer',
+      code: causeCode
+    };
+  }
+
+  return {
+    type: isAbort ? 'ABORTED' : 'NETWORK_ERROR',
+    detail: err?.name || 'Request failed',
+    code: causeCode || 'UNKNOWN'
+  };
+}
 
 async function main() {
   const envPath = path.resolve(__dirname, '../.env');
@@ -76,66 +140,169 @@ async function main() {
     return;
   }
 
-  // Execute Gemini REST generateContent request with 20-second timeout
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  // --------------------------------------------------------------------------
+  // STEP 1: Models Discovery (GET /v1beta/models?pageSize=100)
+  // --------------------------------------------------------------------------
+  console.log('[Step 1/2] Checking API key and model catalog via GET /v1beta/models...');
+  const listEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=100';
+  const listController = new AbortController();
+  const listTimeout = setTimeout(() => listController.abort(), 60000);
+  const listStart = Date.now();
+  let step1Ok = false;
 
   try {
-    const response = await fetch(endpoint, {
+    const listRes = await fetch(listEndpoint, {
+      method: 'GET',
+      headers: {
+        'x-goog-api-key': apiKey
+      },
+      signal: listController.signal
+    });
+
+    const listElapsedMs = Date.now() - listStart;
+    const listRequestId =
+      listRes.headers.get('x-goog-request-id') ||
+      listRes.headers.get('x-request-id') ||
+      'none';
+
+    let listData = {};
+    try {
+      listData = await listRes.json();
+    } catch (e) {}
+
+    console.log(`  Elapsed: ${listElapsedMs}ms`);
+    console.log(`  HTTP Status: ${listRes.status}`);
+    console.log(`  Request ID: ${listRequestId}`);
+
+    if (listRes.ok) {
+      const models = Array.isArray(listData.models) ? listData.models : [];
+      console.log(`  Models returned: ${models.length}`);
+
+      const targetModelNorm = model.toLowerCase().replace(/^models\//, '');
+      const modelFound = models.some((m) => {
+        const rawName = (m.name || '').toLowerCase();
+        const stripped = rawName.replace(/^models\//, '');
+        return stripped === targetModelNorm || rawName === targetModelNorm;
+      });
+
+      console.log(`  GEMINI_MODEL in list: ${modelFound ? 'YES' : 'NO'}`);
+      step1Ok = true;
+    } else {
+      const errorName = listData.error?.status || listData.error?.message || `HTTP_${listRes.status}`;
+      console.error(`  Error: ${errorName}`);
+    }
+  } catch (err) {
+    const listElapsedMs = Date.now() - listStart;
+    const errInfo = formatNetworkError(err, listElapsedMs, 60000);
+    console.error(`  Elapsed: ${listElapsedMs}ms`);
+    console.error(`  Error Type: ${errInfo.type} (${errInfo.detail})`);
+    console.error(`  Cause Code: ${errInfo.code}`);
+    console.error(`  HTTP Status: 0`);
+    console.error(`  Request ID: none`);
+  } finally {
+    clearTimeout(listTimeout);
+  }
+
+  // --------------------------------------------------------------------------
+  // STEP 2: Minimal Generation (POST /v1beta/models/{model}:generateContent)
+  // --------------------------------------------------------------------------
+  console.log('\n[Step 2/2] Testing minimal text generation (thinking minimized)...');
+  const cleanModel = model.replace(/^models\//, '');
+  const genEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cleanModel)}:generateContent`;
+  const genController = new AbortController();
+  const genTimeout = setTimeout(() => genController.abort(), 60000);
+  const genStart = Date.now();
+  let step2Ok = false;
+
+  const genPayload = {
+    contents: [
+      {
+        parts: [{ text: 'ping' }]
+      }
+    ],
+    generationConfig: {
+      thinkingConfig: {
+        thinkingBudget: 0
+      }
+    }
+  };
+
+  try {
+    const genRes = await fetch(genEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': apiKey
       },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: 'ping' }]
-          }
-        ]
-      }),
-      signal: controller.signal
+      body: JSON.stringify(genPayload),
+      signal: genController.signal
     });
 
-    const requestId =
-      response.headers.get('x-goog-request-id') ||
-      response.headers.get('x-request-id') ||
+    const genElapsedMs = Date.now() - genStart;
+    const genRequestId =
+      genRes.headers.get('x-goog-request-id') ||
+      genRes.headers.get('x-request-id') ||
       'none';
 
-    let data = {};
+    let genData = {};
     try {
-      data = await response.json();
-    } catch (e) {
-      // response might not be JSON
-    }
+      genData = await genRes.json();
+    } catch (e) {}
 
-    if (response.ok && data.candidates && data.candidates.length > 0) {
-      console.log('OK');
-      process.exitCode = 0;
+    console.log(`  Elapsed: ${genElapsedMs}ms`);
+    console.log(`  HTTP Status: ${genRes.status}`);
+    console.log(`  Request ID: ${genRequestId}`);
+
+    if (genRes.ok) {
+      const candidates = Array.isArray(genData.candidates) ? genData.candidates : [];
+      const primaryCandidate = candidates[0];
+      const finishReason = primaryCandidate?.finishReason || 'UNKNOWN';
+
+      let hasText = false;
+      if (primaryCandidate?.content?.parts) {
+        for (const p of primaryCandidate.content.parts) {
+          if (p.text && p.text.trim().length > 0) {
+            hasText = true;
+            break;
+          }
+        }
+      }
+
+      const isEmpty = !hasText;
+      const isTruncated = finishReason === 'MAX_TOKENS' || finishReason === 'LENGTH';
+
+      console.log(`  Finish Reason: ${finishReason}`);
+      console.log(`  Empty Response: ${isEmpty ? 'YES' : 'NO'}`);
+      console.log(`  Truncated: ${isTruncated ? 'YES' : 'NO'}`);
+
+      if (!isEmpty) {
+        step2Ok = true;
+      }
     } else {
-      const errorName =
-        data.error?.status ||
-        data.error?.message ||
-        (response.ok ? 'EMPTY_CANDIDATES' : `HTTP_${response.status}`);
-      console.error(`Error: ${errorName}`);
-      console.error(`HTTP Status: ${response.status}`);
-      console.error(`Request ID: ${requestId}`);
-      process.exitCode = 1;
+      const errorName = genData.error?.status || genData.error?.message || `HTTP_${genRes.status}`;
+      console.error(`  Error: ${errorName}`);
     }
   } catch (err) {
-    if (err.name === 'AbortError') {
-      console.error('Error: TIMEOUT');
-      console.error('HTTP Status: 408');
-      console.error('Request ID: none');
-    } else {
-      console.error(`Error: ${err.name || 'NETWORK_ERROR'}`);
-      console.error('HTTP Status: 0');
-      console.error('Request ID: none');
-    }
-    process.exitCode = 1;
+    const genElapsedMs = Date.now() - genStart;
+    const errInfo = formatNetworkError(err, genElapsedMs, 60000);
+    console.error(`  Elapsed: ${genElapsedMs}ms`);
+    console.error(`  Error Type: ${errInfo.type} (${errInfo.detail})`);
+    console.error(`  Cause Code: ${errInfo.code}`);
+    console.error(`  HTTP Status: 0`);
+    console.error(`  Request ID: none`);
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(genTimeout);
+  }
+
+  // --------------------------------------------------------------------------
+  // FINAL VERDICT
+  // --------------------------------------------------------------------------
+  if (step1Ok && step2Ok) {
+    console.log('\nOK');
+    process.exitCode = 0;
+  } else {
+    console.log('\nFAILED');
+    process.exitCode = 1;
   }
 }
 
