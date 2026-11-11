@@ -6,7 +6,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../context/UserContext';
 import { useBooking } from '../context/BookingContext';
 import { API_BASE_URL } from '../config/api';
+import { navigationRef } from './navigationRef';
 import { colors } from '../theme/colors';
+
+// Ensure document.title is always UniServ on web
+if (typeof document !== 'undefined') {
+  document.title = 'UniServ';
+}
 
 // Screens
 import Screen01_LanguageSelection from '../screens/Screen01_LanguageSelection';
@@ -51,8 +57,14 @@ export const AppNavigator = () => {
     return false;
   });
   const [payPalStatusText, setPayPalStatusText] = useState('Verifying PayPal Sandbox Authorization Hold...');
-  const [targetRoute, setTargetRoute] = useState(null);
-  const [targetParams, setTargetParams] = useState(null);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+
+  // Set document.title on mount
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = 'UniServ';
+    }
+  }, []);
 
   // Handle return from PayPal sandbox before navigation renders
   useEffect(() => {
@@ -60,6 +72,9 @@ export const AppNavigator = () => {
 
     const resolvePayPal = async () => {
       try {
+        if (typeof document !== 'undefined') {
+          document.title = 'UniServ';
+        }
         const search = window.location.search || '';
         const params = new URLSearchParams(search);
         const isCancel = params.get('paypal_cancel') === 'true' || params.get('cancel') === 'true';
@@ -77,18 +92,18 @@ export const AppNavigator = () => {
         // CASE 1: BUYER CANCELLED ON PAYPAL
         if (isCancel) {
           if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.history.replaceState({}, 'UniServ', window.location.pathname);
           }
           if (draft) {
             await AsyncStorage.setItem('@uniserv_paypal_cancel_notice', 'true');
-            setTargetRoute('BookingForm');
-            setTargetParams({
-              service: draft.service,
-              bookingType: draft.booking_type,
-              restoredDraft: draft
+            setPendingNavigation({
+              route: 'BookingForm',
+              params: {
+                service: draft.service,
+                bookingType: draft.booking_type,
+                restoredDraft: draft
+              }
             });
-          } else {
-            setTargetRoute('Home');
           }
           setPayPalProcessing(false);
           return;
@@ -99,15 +114,17 @@ export const AppNavigator = () => {
           // Double-auth prevention: if page was refreshed after return and already authorized
           if (draft && draft.status === 'AUTHORIZED' && draft.paypal_authorization_id) {
             if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-              window.history.replaceState({}, document.title, window.location.pathname);
+              window.history.replaceState({}, 'UniServ', window.location.pathname);
             }
             if (draft.bookingRecord) {
               setActiveBooking(draft.bookingRecord);
             }
-            setTargetRoute('WorkerMatch');
-            setTargetParams({
-              service: draft.service,
-              bookingType: draft.booking_type
+            setPendingNavigation({
+              route: 'WorkerMatch',
+              params: {
+                service: draft.service,
+                bookingType: draft.booking_type
+              }
             });
             setPayPalProcessing(false);
             return;
@@ -133,7 +150,7 @@ export const AppNavigator = () => {
 
           // Clean URL params immediately
           if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.history.replaceState({}, 'UniServ', window.location.pathname);
           }
 
           if (res.ok && data.success) {
@@ -160,10 +177,12 @@ export const AppNavigator = () => {
             }));
 
             setActiveBooking(bookingRecord);
-            setTargetRoute('WorkerMatch');
-            setTargetParams({
-              service: bookingRecord.service,
-              bookingType: bookingRecord.booking_type
+            setPendingNavigation({
+              route: 'WorkerMatch',
+              params: {
+                service: bookingRecord.service,
+                bookingType: bookingRecord.booking_type
+              }
             });
           } else {
             // Handle PayPal errors (ORDER_NOT_APPROVED, INSTRUMENT_DECLINED, etc.)
@@ -173,11 +192,13 @@ export const AppNavigator = () => {
               'PayPal Authorization Notice',
               `${errMsg}\n(Debug ID: ${debugId})`
             );
-            setTargetRoute('BookingForm');
-            setTargetParams({
-              service: draft?.service,
-              bookingType: draft?.booking_type,
-              restoredDraft: draft
+            setPendingNavigation({
+              route: 'BookingForm',
+              params: {
+                service: draft?.service,
+                bookingType: draft?.booking_type,
+                restoredDraft: draft
+              }
             });
           }
         }
@@ -188,9 +209,9 @@ export const AppNavigator = () => {
           'Payment server not reachable. Please ensure the UniServ API server is running on port 5000.'
         );
         if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-          window.history.replaceState({}, document.title, window.location.pathname);
+          window.history.replaceState({}, 'UniServ', window.location.pathname);
         }
-        setTargetRoute('BookingForm');
+        setPendingNavigation({ route: 'BookingForm' });
       } finally {
         setPayPalProcessing(false);
       }
@@ -198,6 +219,37 @@ export const AppNavigator = () => {
 
     resolvePayPal();
   }, [payPalProcessing]);
+
+  // Navigate to target screen once navigator is mounted and user is logged in
+  useEffect(() => {
+    if (!pendingNavigation || !isFullyRegisteredAndLoggedIn) return;
+
+    let mounted = true;
+    let attempts = 0;
+
+    const tryNavigate = () => {
+      if (!mounted) return;
+      if (navigationRef.current && typeof navigationRef.current.navigate === 'function') {
+        try {
+          navigationRef.current.navigate(pendingNavigation.route, pendingNavigation.params);
+          setPendingNavigation(null);
+          return;
+        } catch (e) {
+          console.warn('Navigation attempt waiting for navigator readiness:', e.message);
+        }
+      }
+      attempts++;
+      if (attempts < 25) {
+        setTimeout(tryNavigate, 100);
+      }
+    };
+
+    const timer = setTimeout(tryNavigate, 150);
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, [pendingNavigation, isFullyRegisteredAndLoggedIn]);
 
   // Initial Loading Splash Screen or Return Processing
   if (isLoading || payPalProcessing) {
@@ -221,7 +273,7 @@ export const AppNavigator = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName={targetRoute || (isFullyRegisteredAndLoggedIn ? 'MainTabs' : 'OTPLogin')}
+      initialRouteName={isFullyRegisteredAndLoggedIn ? 'MainTabs' : 'OTPLogin'}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right'
@@ -256,12 +308,10 @@ export const AppNavigator = () => {
           <Stack.Screen
             name="BookingForm"
             component={Screen05_BookingForm}
-            initialParams={targetRoute === 'BookingForm' ? targetParams : undefined}
           />
           <Stack.Screen
             name="WorkerMatch"
             component={Screen06_WorkerMatch}
-            initialParams={targetRoute === 'WorkerMatch' ? targetParams : undefined}
           />
           <Stack.Screen name="NoWorkerAvailable" component={Screen15_NoWorkerAvailable} />
 
