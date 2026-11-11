@@ -51,6 +51,12 @@ router.post('/create', async (req, res) => {
 
     // 6. Save initial booking in atomic JSON store
     const payerInput = req.body.payer || {};
+    const dispatchSummaryInput =
+      typeof clientEvidenceInput.english_dispatch_summary === 'string'
+        ? clientEvidenceInput.english_dispatch_summary.trim()
+        : (typeof req.body.english_dispatch_summary === 'string' ? req.body.english_dispatch_summary.trim() : null);
+    const aiTriageInput = req.body.ai_triage || clientEvidenceInput.ai_triage || null;
+
     const bookingRecord = {
       bookingId,
       orderId: orderResult.orderId,
@@ -65,6 +71,8 @@ router.post('/create', async (req, res) => {
       authorizedAmountUsd: calculations.authorizedAmountUsd,
       authorizationId: null,
       authorizationStatus: null,
+      english_dispatch_summary: dispatchSummaryInput ? dispatchSummaryInput.slice(0, 280) : null,
+      ai_triage: aiTriageInput && typeof aiTriageInput === 'object' ? aiTriageInput : null,
       payer: {
         name: typeof payerInput.name === 'string' && payerInput.name.trim() ? payerInput.name.trim() : 'International Customer',
         country: typeof payerInput.country === 'string' && payerInput.country.trim() ? payerInput.country.trim() : 'United States'

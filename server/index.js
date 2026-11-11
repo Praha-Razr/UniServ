@@ -19,6 +19,7 @@ const store = require('./store');
 const ordersRouter = require('./routes/orders');
 const jobsRouter = require('./routes/jobs');
 const payoutsRouter = require('./routes/payouts');
+const aiRouter = require('./routes/ai');
 const { validateReceiverEmails } = require('./services/receiverValidation');
 
 // Validate receiver emails configuration on server boot (names only)
@@ -63,6 +64,7 @@ app.get('/health', (req, res) => {
 app.use('/api/orders', ordersRouter);
 app.use('/api/jobs', jobsRouter);
 app.use('/api/payouts', payoutsRouter);
+app.use('/api/ai', aiRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

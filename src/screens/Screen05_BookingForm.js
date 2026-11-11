@@ -25,6 +25,7 @@ import PermissionsModal from '../components/PermissionsModal';
 import AudioVoiceRecorder from '../components/AudioVoiceRecorder';
 import { fetchRealDoorstepLocation, getHyperLocalCooperative } from '../utils/locationService';
 import cooperativesData from '../data/cooperatives.json';
+import servicesData from '../data/services.json';
 import {
   getLocalizedServiceName,
   getLocalizedService,
@@ -181,15 +182,21 @@ export const getDynamicSoloPrice = (
 
 export const Screen05_BookingForm = ({ route, navigation }) => {
   const { service, bookingType = 'now', emergencyIssue } = route.params || {};
+  const [currentService, setCurrentService] = useState(service);
+  const activeService = currentService || service;
   const { user, language, t, permissions, grantAllPermissions, updatePermission } = useUser();
   const { createBooking, isFirstTimeUser, FIRST_TIME_DISCOUNT, submitCommunityBulkRequest, pendingCancellationFee } = useBooking();
-  const serviceId = service?.id || 's1';
+  const serviceId = activeService?.id || 's1';
   const isDriverService = serviceId === 's9';
+
+  // AI Smart Triage State
+  const [isTriaging, setIsTriaging] = useState(false);
+  const [triageResult, setTriageResult] = useState(null);
 
   // Multilingual dynamic configurations
   const localizedBulkConfig = useMemo(() => getLocalizedTradeBulkConfig(serviceId, language?.code), [serviceId, language?.code]);
   const localizedQuestions = useMemo(() => getLocalizedTradeQuestions(serviceId, language?.code), [serviceId, language?.code]);
-  const localizedServiceName = useMemo(() => getLocalizedServiceName(service, t, language?.code), [service, t, language?.code]);
+  const localizedServiceName = useMemo(() => getLocalizedServiceName(activeService, t, language?.code), [activeService, t, language?.code]);
 
   // Scale Mode: 'solo' (Retail household 1-2 workers) vs 'bulk' (Full Property / Multi-Worker Community Fleet)
   const [scaleMode, setScaleMode] = useState('solo');
@@ -565,6 +572,62 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
   const estimateUsdStr = (estimateCents / 100).toFixed(2);
   const ceilingUsdStr = (ceilingCents / 100).toFixed(2);
 
+  const handleRunAiTriage = async () => {
+    const photoAttachment = mediaAttachments.find((m) => m.type === 'photo') || (pickedImage ? { uri: pickedImage } : null);
+    if (!description.trim() && !photoAttachment) {
+      Alert.alert(
+        'AI Smart Triage',
+        'Please enter a brief problem description or attach a photo so Gemini can analyze your issue.'
+      );
+      return;
+    }
+
+    setIsTriaging(true);
+    try {
+      let imageBase64 = null;
+      if (photoAttachment && photoAttachment.uri) {
+        if (photoAttachment.uri.startsWith('data:')) {
+          imageBase64 = photoAttachment.uri;
+        } else if (Platform.OS === 'web' && typeof fetch !== 'undefined') {
+          try {
+            const imgRes = await fetch(photoAttachment.uri);
+            const blob = await imgRes.blob();
+            const reader = new FileReader();
+            imageBase64 = await new Promise((resolve) => {
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+          } catch (e) {}
+        }
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/ai/triage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: description.trim(),
+          image_base64: imageBase64,
+          language: language?.code || 'en'
+        })
+      });
+
+      const data = await res.json();
+      if (data && data.trade_id) {
+        setTriageResult(data);
+        if (!description.trim() && data.customer_language_summary) {
+          setDescription(data.customer_language_summary);
+        }
+      } else {
+        Alert.alert('AI Triage', 'Could not determine trade. Please select service manually.');
+      }
+    } catch (err) {
+      console.warn('AI Triage error:', err);
+      Alert.alert('AI Triage Unavailable', 'Temporary connection issue. You can continue booking manually.');
+    } finally {
+      setIsTriaging(false);
+    }
+  };
+
   const handlePayPalBooking = async () => {
     if (isDriverService && (!pickupAddress.trim() || !dropAddress.trim())) {
       Alert.alert('Incomplete Route', 'Please enter both Pickup and Drop locations for the driver.');
@@ -578,7 +641,9 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
         : `${tradeSubtype ? `Category Focus: ${tradeSubtype}. ` : ''}${tradeScope2 ? `Setup: ${tradeScope2}. ` : ''}${description || 'Standard repair request.'}`;
 
       const draftBookingRecord = {
-        service,
+        service: activeService,
+        english_dispatch_summary: triageResult?.english_dispatch_summary || null,
+        ai_triage: triageResult || null,
         is_bulk_project: false,
         scale_mode: 'solo',
         worker_count: isMultiWorkerEligible ? workerCount : 1,
@@ -648,10 +713,12 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
         },
         body: JSON.stringify({
           bookingInput: {
-            service_id: service?.id || 's1',
+            service_id: activeService?.id || 's1',
             booking_type: type === 'emergency' ? 'emergency' : (type === 'scheduled' ? 'scheduled' : 'normal'),
             distance_km: 5.0,
-            first_time: isFirstTimeUser
+            first_time: isFirstTimeUser,
+            english_dispatch_summary: triageResult?.english_dispatch_summary || null,
+            ai_triage: triageResult || null
           },
           payer: {
             name: payerName.trim() || user?.name || 'International Customer',
@@ -782,7 +849,9 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
       : `${tradeSubtype ? `Category Focus: ${tradeSubtype}. ` : ''}${tradeScope2 ? `Setup: ${tradeScope2}. ` : ''}${description || 'Standard repair request.'}`;
 
     createBooking({
-      service,
+      service: activeService,
+      english_dispatch_summary: triageResult?.english_dispatch_summary || null,
+      ai_triage: triageResult || null,
       is_bulk_project: false,
       scale_mode: 'solo',
       worker_count: isMultiWorkerEligible ? workerCount : 1,
@@ -1547,6 +1616,136 @@ export const Screen05_BookingForm = ({ route, navigation }) => {
                   </View>
                 ))}
               </ScrollView>
+            )}
+          </View>
+
+          {/* AI Smart Triage Section */}
+          <View style={styles.triageContainer}>
+            <View style={styles.triageHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="sparkles" size={15} color="#0284C7" style={{ marginRight: 6 }} />
+                <Text style={styles.triageTitle}>AI SMART TRIAGE</Text>
+              </View>
+              {triageResult && (
+                <View style={triageResult.mode === 'REAL_AI' ? styles.triageBadgeReal : styles.triageBadgeSimulated}>
+                  <Text style={triageResult.mode === 'REAL_AI' ? styles.triageBadgeTextReal : styles.triageBadgeTextSimulated}>
+                    {triageResult.mode === 'REAL_AI' ? 'Powered by Gemini (AI estimate)' : '[SIMULATED AI RESPONSE]'}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {!triageResult && (
+              <TouchableOpacity
+                style={[styles.triageLaunchBtn, isTriaging && { opacity: 0.7 }]}
+                onPress={handleRunAiTriage}
+                disabled={isTriaging}
+                activeOpacity={0.8}
+              >
+                {isTriaging ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.triageLaunchBtnText}>Analyzing with Gemini AI...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="sparkles" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.triageLaunchBtnText}>Analyze Photo &amp; Issue with AI Triage</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {triageResult && (
+              <View style={styles.triageResultBox}>
+                <View style={styles.triageRowBetween}>
+                  <Text style={styles.triageTradeName}>
+                    Recommended: {servicesData.find((s) => s.id === triageResult.trade_id)?.icon || '🔧'}{' '}
+                    {servicesData.find((s) => s.id === triageResult.trade_id)?.name || triageResult.trade_id}
+                  </Text>
+                  {serviceId !== triageResult.trade_id && (
+                    <TouchableOpacity
+                      style={styles.triageApplyBtn}
+                      onPress={() => {
+                        const match = servicesData.find((s) => s.id === triageResult.trade_id);
+                        if (match) setCurrentService(match);
+                      }}
+                    >
+                      <Text style={styles.triageApplyBtnText}>Switch Trade</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={[styles.triageRowBetween, { marginTop: 8 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View
+                      style={[
+                        styles.urgencyPill,
+                        {
+                          backgroundColor:
+                            triageResult.urgency === 'high' || triageResult.urgency === 'emergency'
+                              ? '#FEE2E2'
+                              : '#E0F2FE'
+                        }
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.urgencyPillText,
+                          {
+                            color:
+                              triageResult.urgency === 'high' || triageResult.urgency === 'emergency'
+                                ? '#DC2626'
+                                : '#0369A1'
+                          }
+                        ]}
+                      >
+                        {String(triageResult.urgency || 'MEDIUM').toUpperCase()} URGENCY
+                      </Text>
+                    </View>
+                    {triageResult.confidence && (
+                      <Text style={styles.triageConfidenceText}>
+                        {Math.round(triageResult.confidence * 100)}% match
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.triagePriceRange}>
+                    ₹{triageResult.price_range_inr?.min} – ₹{triageResult.price_range_inr?.max} (approx)
+                  </Text>
+                </View>
+
+                {triageResult.english_dispatch_summary && (
+                  <View style={styles.triageSummaryBox}>
+                    <Text style={styles.triageSummaryLabel}>Dispatch Summary:</Text>
+                    <Text style={styles.triageSummaryText}>{triageResult.english_dispatch_summary}</Text>
+                  </View>
+                )}
+
+                {triageResult.likely_parts && triageResult.likely_parts.length > 0 && (
+                  <Text style={styles.triagePartsText}>
+                    Likely parts: {triageResult.likely_parts.join(', ')}
+                  </Text>
+                )}
+
+                {triageResult.safety_flag?.flag && (
+                  <View style={styles.triageSafetyBox}>
+                    <Ionicons name="alert-circle" size={16} color="#DC2626" style={{ marginRight: 6 }} />
+                    <Text style={styles.triageSafetyText}>{triageResult.safety_flag.reason}</Text>
+                  </View>
+                )}
+
+                <Text style={styles.triageDisclaimer}>
+                  AI estimate, final bill from verified job events
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.triageRerunBtn}
+                  onPress={handleRunAiTriage}
+                  disabled={isTriaging}
+                >
+                  <Text style={styles.triageRerunText}>Re-run Triage</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
@@ -3050,6 +3249,165 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#991B1B',
     lineHeight: 16
+  },
+  triageContainer: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD'
+  },
+  triageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
+  triageTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0369A1',
+    letterSpacing: 0.5
+  },
+  triageBadgeReal: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  triageBadgeTextReal: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1D4ED8'
+  },
+  triageBadgeSimulated: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  triageBadgeTextSimulated: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#B45309'
+  },
+  triageLaunchBtn: {
+    backgroundColor: '#0284C7',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  triageLaunchBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13
+  },
+  triageResultBox: {
+    marginTop: 4
+  },
+  triageRowBetween: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  triageTradeName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary
+  },
+  triageApplyBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  triageApplyBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 11
+  },
+  urgencyPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginRight: 6
+  },
+  urgencyPillText: {
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  triageConfidenceText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '600'
+  },
+  triagePriceRange: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary
+  },
+  triageSummaryBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E0F2FE'
+  },
+  triageSummaryLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    marginBottom: 2
+  },
+  triageSummaryText: {
+    fontSize: 12,
+    color: colors.textPrimary,
+    lineHeight: 16
+  },
+  triagePartsText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 6,
+    fontStyle: 'italic'
+  },
+  triageSafetyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 8
+  },
+  triageSafetyText: {
+    fontSize: 11,
+    color: '#B91C1C',
+    fontWeight: '600',
+    flex: 1
+  },
+  triageDisclaimer: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 8,
+    fontStyle: 'italic',
+    textAlign: 'center'
+  },
+  triageRerunBtn: {
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 12
+  },
+  triageRerunText: {
+    fontSize: 11,
+    color: '#0284C7',
+    fontWeight: '700'
   }
 });
 
