@@ -886,7 +886,7 @@ export const SEVA_SURAKSHA_TRANSLATIONS = [
   },
   {
     id: 8,
-    icon: 'shield-alert',
+    icon: 'alert-circle',
     problem: {
       en: 'Safety concern or dispute',
       ta: 'பாதுகாப்பு கவலை அல்லது தகராறு',

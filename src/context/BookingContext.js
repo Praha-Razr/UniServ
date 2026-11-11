@@ -66,9 +66,13 @@ export const BookingProvider = ({ children }) => {
           try {
             const draft = JSON.parse(rawDraft);
             if (draft && draft.status === 'AUTHORIZED' && draft.paypal_authorization_id) {
+              const bId = draft.bookingId || draft.bookingRecord?.booking_id || activeObj?.booking_id || activeObj?.bookingId;
               activeObj = {
                 ...(draft.bookingRecord || {}),
                 ...(activeObj || {}),
+                booking_id: bId || activeObj?.booking_id,
+                bookingId: bId || activeObj?.bookingId,
+                paypal_booking_id: bId || activeObj?.paypal_booking_id,
                 payment_method: 'PAYPAL_SANDBOX',
                 paypal_order_id: draft.orderId || activeObj?.paypal_order_id,
                 paypal_authorization_id: draft.paypal_authorization_id,
@@ -132,6 +136,7 @@ export const BookingProvider = ({ children }) => {
       if (typeof updater === 'function') {
         updated = updater(prev);
       } else if (updater && typeof updater === 'object') {
+        const prevId = prev?.paypal_booking_id || prev?.bookingId || prev?.booking_id;
         // Merge with prev to ensure paypal_* fields and existing booking data survive
         updated = {
           ...(prev || {}),
@@ -143,9 +148,15 @@ export const BookingProvider = ({ children }) => {
             paypal_status: prev.paypal_status,
             paypal_mode: prev.paypal_mode,
             paypal_authorized_usd: prev.paypal_authorized_usd,
-            paypal_payer: prev.paypal_payer
+            paypal_payer: prev.paypal_payer,
+            paypal_booking_id: prevId,
+            bookingId: prevId,
+            booking_id: prevId
           } : {})
         };
+        if (prevId && !updated.booking_id) updated.booking_id = prevId;
+        if (prevId && !updated.bookingId) updated.bookingId = prevId;
+        if (prevId && !updated.paypal_booking_id) updated.paypal_booking_id = prevId;
       } else {
         updated = updater;
       }

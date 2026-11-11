@@ -167,9 +167,12 @@ export const AppNavigator = () => {
             const last4 = data.authorizationId ? String(data.authorizationId).slice(-4) : 'none';
             console.log(`PayPal authorize: ${data.status} ${last4}`);
 
+            const resolvedBookingId = data.bookingId || targetBookingId;
             const bookingRecord = {
               ...(draft?.bookingRecord || draft || {}),
-              booking_id: data.bookingId || targetBookingId,
+              booking_id: resolvedBookingId,
+              bookingId: resolvedBookingId,
+              paypal_booking_id: resolvedBookingId,
               payment_method: 'PAYPAL_SANDBOX',
               paypal_order_id: data.orderId || targetOrderId,
               paypal_authorization_id: data.authorizationId,

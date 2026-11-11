@@ -39,16 +39,17 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
   } = useBooking();
   const { t } = useUser();
 
-  const fallbackWorker = getFallbackWorkerForTrade(activeBooking?.service || route.params?.service);
-  const worker = activeBooking?.worker || route.params?.worker || fallbackWorker;
-  const secondWorker = activeBooking?.second_worker;
-  const service = activeBooking?.service;
+  const currentBooking = activeBooking || route?.params?.booking;
+  const fallbackWorker = getFallbackWorkerForTrade(currentBooking?.service || route.params?.service);
+  const worker = currentBooking?.worker || route.params?.worker || fallbackWorker;
+  const secondWorker = currentBooking?.second_worker;
+  const service = currentBooking?.service;
   const extraWorkDef = service?.extra_work;
   const helperDef = service?.helper_request;
   const helperAllowed = helperDef?.allowed !== false;
 
   // Phase I eligibility: Electrician (s2) and Technician (s7) solo services only
-  const isPartPauseEligible = !activeBooking?.is_bulk_project && (
+  const isPartPauseEligible = !currentBooking?.is_bulk_project && (
     ['s2', 's7'].includes(service?.id) ||
     ['electrician', 'technician'].includes((service?.name || '').toLowerCase())
   );
@@ -127,8 +128,8 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
       current_seconds: secondsElapsed
     });
     // Emit server-stamped pause_parts and parts events for PayPal booking
-    emitJobEvent(activeBooking, 'pause_parts');
-    emitJobEvent(activeBooking, 'parts', {
+    emitJobEvent(currentBooking, 'pause_parts');
+    emitJobEvent(currentBooking, 'parts', {
       cost: parsedCost,
       part_name: partNameInput
     });
@@ -149,7 +150,7 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
       setResumeOtpInput('');
       setResumeOtpError('');
       // Emit server-stamped resume event for PayPal booking
-      emitJobEvent(activeBooking, 'resume');
+      emitJobEvent(currentBooking, 'resume');
       Alert.alert(
         '▶️ Work Timer Resumed',
         'Spare part received & verified! Work timer has resumed from where it paused. Zero minutes were billed during procurement.'
@@ -180,7 +181,7 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
       navigation.navigate('Rating', { booking: activeBooking });
       return;
     }
-    navigation.navigate('CompletionOTP', { worker, booking: activeBooking });
+    navigation.navigate('CompletionOTP', { worker, booking: currentBooking });
   };
 
   const handleApproveExtraParts = () => {
@@ -192,7 +193,7 @@ export const Screen09_JobInProgress = ({ route, navigation }) => {
       photo: extraWorkDef?.photo
     });
     // Emit server-stamped extra_work event for PayPal booking
-    emitJobEvent(activeBooking, 'extra_work', {
+    emitJobEvent(currentBooking, 'extra_work', {
       amount: parsedAmount,
       description: extraWorkDef?.title || 'Component Replacement',
       approved: true

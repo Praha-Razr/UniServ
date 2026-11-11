@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,8 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -14,7 +15,7 @@ import { useBooking } from '../context/BookingContext';
 import { useUser } from '../context/UserContext';
 import Header from '../components/Header';
 import { getFallbackWorkerForTrade } from '../utils/locationService';
-import { emitJobEvent } from '../utils/jobTelemetry';
+import { emitJobEvent, isPayPalBooking } from '../utils/jobTelemetry';
 
 export const Screen08_StartOTP = ({ route, navigation }) => {
   const { activeBooking, verifyStartOtp } = useBooking();
@@ -23,11 +24,28 @@ export const Screen08_StartOTP = ({ route, navigation }) => {
   const worker = activeBooking?.worker || route.params?.worker || fallbackWorker;
 
   const startOtp = activeBooking?.start_otp || '4829';
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  const handleWorkerEnteredOtp = () => {
+  const handleWorkerEnteredOtp = async () => {
+    if (isSubmitting) return;
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    const targetBooking = activeBooking || route.params?.booking;
+
+    if (isPayPalBooking(targetBooking)) {
+      const res = await emitJobEvent(targetBooking, 'start');
+      if (!res || res.success === false) {
+        setIsSubmitting(false);
+        setSubmitError(res?.message || res?.error || 'Failed to record start event on server');
+        return;
+      }
+    }
+
     verifyStartOtp();
-    emitJobEvent(activeBooking, 'start');
-    navigation.navigate('JobInProgress', { worker, booking: activeBooking });
+    setIsSubmitting(false);
+    navigation.navigate('JobInProgress', { worker, booking: targetBooking });
   };
 
   const handleReportMismatch = () => {
@@ -136,15 +154,40 @@ export const Screen08_StartOTP = ({ route, navigation }) => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Handshake Trigger Button */}
+      {/* Handshake Trigger Button & Error Banner */}
       <View style={styles.bottomBar}>
+        {submitError ? (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={18} color={colors.danger} />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.errorBoxTitle}>Server Event Verification Failed</Text>
+              <Text style={styles.errorBoxText}>{submitError}</Text>
+            </View>
+          </View>
+        ) : null}
+
         <TouchableOpacity
-          style={styles.handshakeBtn}
+          style={[styles.handshakeBtn, isSubmitting && { opacity: 0.7 }]}
           onPress={handleWorkerEnteredOtp}
           activeOpacity={0.85}
+          disabled={isSubmitting}
         >
-          <Ionicons name="finger-print" size={20} color="#FFFFFF" />
-          <Text style={styles.handshakeBtnText}>{t('confirmStart')}</Text>
+          {isSubmitting ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.handshakeBtnText}>Verifying Start PIN with Server...</Text>
+            </View>
+          ) : submitError ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.handshakeBtnText}>Try Again</Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="finger-print" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.handshakeBtnText}>{t('confirmStart')}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -406,6 +449,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     marginLeft: 8
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10
+  },
+  errorBoxTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.danger,
+    marginBottom: 2
+  },
+  errorBoxText: {
+    fontSize: 11,
+    color: '#7F1D1D',
+    lineHeight: 15
   }
 });
 

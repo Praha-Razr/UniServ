@@ -23,7 +23,8 @@ export function isPayPalBooking(booking) {
     booking.payment_method === 'PAYPAL_SANDBOX' ||
     Boolean(booking.paypal_authorization_id) ||
     Boolean(booking.paypal_booking_id) ||
-    (typeof booking.bookingId === 'string' && booking.bookingId.startsWith('BK_'))
+    (typeof booking.bookingId === 'string' && booking.bookingId.startsWith('BK_')) ||
+    (typeof booking.booking_id === 'string' && booking.booking_id.startsWith('BK_'))
   );
 }
 
@@ -33,17 +34,24 @@ export function isPayPalBooking(booking) {
  * @param {object} booking - Current booking object
  * @param {string} type - 'start' | 'pause_parts' | 'resume' | 'extra_work' | 'parts' | 'complete'
  * @param {object} [payload] - Optional event payload (e.g. { amount, cost, description })
- * @returns {Promise<object|null>} Response data or null if skipped/failed
+ * @returns {Promise<object>} Result object with success flag and event details or error
  */
 export async function emitJobEvent(booking, type, payload = {}) {
   if (!isPayPalBooking(booking)) {
-    return { skipped: true, reason: 'NON_PAYPAL_BOOKING' };
+    return { success: true, skipped: true, reason: 'NON_PAYPAL_BOOKING' };
   }
 
-  const bookingId = booking.paypal_booking_id || booking.bookingId;
+  const bookingId = booking?.paypal_booking_id || booking?.bookingId || booking?.booking_id;
+  const hasBookingId = Boolean(bookingId);
+  console.log(`event emit: ${type} bookingId present: ${hasBookingId ? 'yes' : 'no'}`);
+
   if (!bookingId) {
-    console.warn('[Telemetry] Cannot emit event: missing bookingId on booking', booking);
-    return null;
+    console.warn(`[Telemetry] Cannot emit event "${type}": missing bookingId on booking`, booking);
+    return {
+      success: false,
+      error: 'MISSING_BOOKING_ID',
+      message: 'Missing booking ID for telemetry'
+    };
   }
 
   try {
@@ -56,16 +64,33 @@ export async function emitJobEvent(booking, type, payload = {}) {
       body: JSON.stringify({ type, payload })
     });
 
+    console.log(`event emit: ${type} status: ${res.status}`);
+
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       console.warn(`[Telemetry] Server rejected event "${type}":`, data.message || data.error);
-      return data;
+      return {
+        success: false,
+        status: res.status,
+        error: data.error || 'SERVER_REJECTED',
+        message: data.message || `Server rejected event (${res.status})`,
+        data
+      };
     }
 
-    return data;
+    return {
+      success: true,
+      status: res.status,
+      ...data
+    };
   } catch (err) {
+    console.log(`event emit: ${type} status: network_error`);
     console.warn(`[Telemetry] Network error emitting event "${type}":`, err.message);
-    return null;
+    return {
+      success: false,
+      error: 'NETWORK_ERROR',
+      message: err.message || 'Network connection failed'
+    };
   }
 }
 

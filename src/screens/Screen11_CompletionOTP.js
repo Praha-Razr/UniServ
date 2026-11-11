@@ -5,16 +5,17 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity
+  TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useBooking } from '../context/BookingContext';
 import { useUser } from '../context/UserContext';
 import Header from '../components/Header';
-import { emitJobEvent } from '../utils/jobTelemetry';
+import { emitJobEvent, isPayPalBooking } from '../utils/jobTelemetry';
 
-export const Screen11_CompletionOTP = ({ navigation }) => {
+export const Screen11_CompletionOTP = ({ route, navigation }) => {
   const { activeBooking, verifyCompletionOtp, computeTotal } = useBooking();
   const { t } = useUser();
 
@@ -23,6 +24,12 @@ export const Screen11_CompletionOTP = ({ navigation }) => {
   const isExtraApproved = activeBooking?.extra_work?.approved;
   const isHelperApproved = activeBooking?.second_worker || activeBooking?.helper_request?.status === 'approved';
   const finalPayable = computeTotal ? computeTotal(activeBooking) : (activeBooking?.total_amount || 350);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+  const targetBooking = activeBooking || route?.params?.booking;
+  const isPayPal = isPayPalBooking(targetBooking);
 
   const [checklist, setChecklist] = useState([
     { id: 1, text: t('checkInspectRepair') || 'Repair inspected and tested in your presence', checked: true },
@@ -36,17 +43,34 @@ export const Screen11_CompletionOTP = ({ navigation }) => {
     );
   };
 
-  const handleConfirmCompletion = () => {
+  const handleConfirmCompletion = async () => {
+    if (isSubmitting) return;
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    const bookingToUse = activeBooking || route?.params?.booking;
+
+    if (isPayPalBooking(bookingToUse)) {
+      const res = await emitJobEvent(bookingToUse, 'complete');
+      if (!res || res.success === false) {
+        setIsSubmitting(false);
+        setSubmitError(res?.message || res?.error || 'Failed to record completion event on server');
+        return;
+      }
+    }
+
     verifyCompletionOtp();
-    emitJobEvent(activeBooking, 'complete');
-    if (activeBooking?.is_bulk_project) {
-      if (activeBooking?.payment_status === 'full_paid' || Number(activeBooking?.remaining_amount) <= 0) {
-        navigation.navigate('Rating', { booking: activeBooking });
+    setIsSubmitting(false);
+
+    const updatedBooking = activeBooking || route?.params?.booking;
+    if (updatedBooking?.is_bulk_project) {
+      if (updatedBooking?.payment_status === 'full_paid' || Number(updatedBooking?.remaining_amount) <= 0) {
+        navigation.navigate('Rating', { booking: updatedBooking });
       } else {
         navigation.navigate('BulkPayment');
       }
     } else {
-      navigation.navigate('Payment', { booking: activeBooking });
+      navigation.navigate('Payment', { booking: updatedBooking });
     }
   };
 
@@ -240,17 +264,42 @@ export const Screen11_CompletionOTP = ({ navigation }) => {
         )}
       </ScrollView>
 
-      {/* Handshake Trigger Button */}
+      {/* Handshake Trigger Button & Error Banner */}
       <View style={styles.bottomBar}>
+        {submitError ? (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={18} color={colors.danger} />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.errorBoxTitle}>Server Completion Verification Failed</Text>
+              <Text style={styles.errorBoxText}>{submitError}</Text>
+            </View>
+          </View>
+        ) : null}
+
         <TouchableOpacity
-          style={styles.confirmBtn}
+          style={[styles.confirmBtn, isSubmitting && { opacity: 0.7 }]}
           onPress={handleConfirmCompletion}
           activeOpacity={0.85}
+          disabled={isSubmitting}
         >
-          <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
-          <Text style={styles.confirmBtnText}>
-            {t('confirmCompletion')} (₹{finalPayable})
-          </Text>
+          {isSubmitting ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.confirmBtnText}>Verifying Completion with Server...</Text>
+            </View>
+          ) : submitError ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.confirmBtnText}>Try Again</Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.confirmBtnText}>
+                {isPayPal ? 'Confirm Completion & Settle' : `${t('confirmCompletion')} (₹${finalPayable})`}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -470,6 +519,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     marginLeft: 8
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10
+  },
+  errorBoxTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.danger,
+    marginBottom: 2
+  },
+  errorBoxText: {
+    fontSize: 11,
+    color: '#7F1D1D',
+    lineHeight: 15
   }
 });
 

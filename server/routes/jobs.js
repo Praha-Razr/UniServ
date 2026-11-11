@@ -25,16 +25,22 @@ router.post('/:bookingId/events', (req, res) => {
   const booking = store.getBooking(bookingId);
 
   if (!booking) {
+    const reason = `Booking "${bookingId}" not found`;
+    console.log(`event rejected: ${reason}`);
     return res.status(404).json({
       success: false,
       error: 'BOOKING_NOT_FOUND',
-      message: `Booking "${bookingId}" not found`
+      message: reason
     });
   }
+
+  const last4 = String(booking.bookingId || bookingId).slice(-4);
 
   try {
     const stampedEvent = validateAndStampEvent(booking, req.body);
     const updatedBooking = store.addBookingEvent(booking.bookingId, stampedEvent);
+
+    console.log(`event received: ${stampedEvent.type} ${last4}`);
 
     return res.status(201).json({
       success: true,
@@ -43,6 +49,9 @@ router.post('/:bookingId/events', (req, res) => {
       eventCount: (updatedBooking && updatedBooking.events) ? updatedBooking.events.length : 1
     });
   } catch (err) {
+    const reason = err.message || 'Validation error';
+    console.log(`event rejected: ${reason}`);
+
     if (err instanceof ValidationError) {
       return res.status(400).json({
         success: false,

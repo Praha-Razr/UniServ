@@ -392,7 +392,7 @@ export const Screen03_Home = ({ navigation }) => {
             </Text>
           </View>
           <View style={styles.emergencyActionBtn}>
-            <Ionicons name="shield-alert" size={16} color={colors.danger} />
+            <Ionicons name="alert-circle" size={16} color={colors.danger} />
             <Text style={styles.emergencyActionText}>{t('bookSosBtn')}</Text>
           </View>
         </TouchableOpacity>

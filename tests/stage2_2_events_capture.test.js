@@ -682,3 +682,88 @@ test('Stage 2.2: End-to-end route handlers for events, preview, and capture', as
     store._clearForTesting();
   }
 });
+
+test('Stage 2.2c: HTTP routes record start, pause_parts, resume, complete sequentially to stored event log', async () => {
+  const jobsRouter = require('../server/routes/jobs');
+  const eventHandler = jobsRouter.stack.find((s) => s.route?.path === '/:bookingId/events')?.route?.stack[0]?.handle;
+  assert.ok(eventHandler, 'eventHandler found on jobsRouter');
+
+  function createMockRes() {
+    const state = { statusCode: 200, data: null };
+    const res = {
+      status(code) {
+        state.statusCode = code;
+        return res;
+      },
+      json(payload) {
+        state.data = payload;
+        return res;
+      }
+    };
+    return { res, state };
+  }
+
+  const bookingId = 'BK_FULL_LIFECYCLE_TEST';
+  store.saveBooking({
+    bookingId,
+    orderId: 'ORD_LIFECYCLE_123',
+    authorizationId: 'AUTH_LIFECYCLE_456',
+    status: 'AUTHORIZED',
+    authorizedCents: 800,
+    authorizedAmountUsd: '8.00',
+    evidence: {
+      service: { id: 's2', start_price: 349 },
+      booking_type: 'normal',
+      distance_km: 0
+    },
+    events: []
+  });
+
+  try {
+    // 1. Post 'start' event
+    const { res: startRes, state: startState } = createMockRes();
+    await eventHandler({ params: { bookingId }, body: { type: 'start' } }, startRes);
+    assert.strictEqual(startState.statusCode, 201);
+    assert.strictEqual(startState.data.event.type, 'start');
+    assert.ok(startState.data.event.timestamp);
+
+    // 2. Post 'pause_parts' event
+    const { res: pauseRes, state: pauseState } = createMockRes();
+    await eventHandler({ params: { bookingId }, body: { type: 'pause_parts' } }, pauseRes);
+    assert.strictEqual(pauseState.statusCode, 201);
+    assert.strictEqual(pauseState.data.event.type, 'pause_parts');
+    assert.ok(pauseState.data.event.timestamp);
+
+    // 3. Post 'resume' event
+    const { res: resumeRes, state: resumeState } = createMockRes();
+    await eventHandler({ params: { bookingId }, body: { type: 'resume' } }, resumeRes);
+    assert.strictEqual(resumeState.statusCode, 201);
+    assert.strictEqual(resumeState.data.event.type, 'resume');
+    assert.ok(resumeState.data.event.timestamp);
+
+    // 4. Post 'complete' event
+    const { res: completeRes, state: completeState } = createMockRes();
+    await eventHandler({ params: { bookingId }, body: { type: 'complete' } }, completeRes);
+    assert.strictEqual(completeState.statusCode, 201);
+    assert.strictEqual(completeState.data.event.type, 'complete');
+    assert.ok(completeState.data.event.timestamp);
+
+    // Verify stored event log in store
+    const storedBooking = store.getBooking(bookingId);
+    assert.ok(storedBooking, 'Stored booking must exist');
+    assert.ok(Array.isArray(storedBooking.events), 'Events must be an array');
+    assert.strictEqual(storedBooking.events.length, 4, 'Must have recorded exactly 4 events');
+    assert.deepStrictEqual(
+      storedBooking.events.map((e) => e.type),
+      ['start', 'pause_parts', 'resume', 'complete']
+    );
+
+    // Each event must have valid ISO timestamp
+    storedBooking.events.forEach((evt) => {
+      assert.ok(evt.timestamp, `Event ${evt.type} must have timestamp`);
+      assert.ok(!isNaN(Date.parse(evt.timestamp)), `Timestamp for ${evt.type} must be a valid ISO date`);
+    });
+  } finally {
+    store._clearForTesting();
+  }
+});

@@ -66,7 +66,7 @@ export const Screen16_ComplaintScreen = ({ route, navigation }) => {
             {/* Header Box */}
             <View style={styles.headerHero}>
               <View style={styles.iconCircle}>
-                <Ionicons name="shield-alert" size={28} color={colors.danger} />
+                <Ionicons name="alert-circle" size={28} color={colors.danger} />
               </View>
               <Text style={styles.title}>{t('submitComplaint')}</Text>
               <Text style={styles.subtitle}>
