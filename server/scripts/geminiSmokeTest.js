@@ -523,9 +523,17 @@ async function main() {
 
   if (recommended) {
     console.log(`\nRECOMMENDED VARIANT: ${recommended.letter}`);
-    process.exitCode = 0;
   } else {
     console.log('\nRECOMMENDED VARIANT: none');
+  }
+
+  // Stage 4.1a: Model Capability Tests
+  try {
+    const { runCapabilityTest } = require('./geminiCapabilityTest');
+    const capOk = await runCapabilityTest();
+    process.exitCode = (recommended && capOk) ? 0 : 1;
+  } catch (ce) {
+    console.error('Failed to run capability tests:', ce?.message || ce);
     process.exitCode = 1;
   }
 }
