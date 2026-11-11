@@ -45,6 +45,8 @@ export const AppNavigator = () => {
   const { isLoggedIn, isLoading, user } = useUser();
   const { setActiveBooking } = useBooking();
 
+  const isFullyRegisteredAndLoggedIn = Boolean(isLoggedIn && user && user.isRegistered);
+
   const [payPalProcessing, setPayPalProcessing] = useState(() => {
     if (typeof window !== 'undefined' && window.location) {
       const search = window.location.search || '';
@@ -268,8 +270,6 @@ export const AppNavigator = () => {
       </View>
     );
   }
-
-  const isFullyRegisteredAndLoggedIn = Boolean(isLoggedIn && user && user.isRegistered);
 
   return (
     <Stack.Navigator
