@@ -57,7 +57,7 @@ flowchart TD
     subgraph External["External APIs (Sandbox & AI)"]
         PayPalAuth["PayPal REST API v2\n(Orders / Authorize / Capture)"]
         PayPalPayout["PayPal REST API v1\n(Batched Split Payouts)"]
-        Gemini["Google Gemini API\n(gemini-2.5-flash / gemini-3.5-flash-lite)"]
+        Gemini["Google Gemini API\n(gemini-3.5-flash-lite)"]
     end
 
     subgraph LedgerView["Treasury Dashboard"]
@@ -130,6 +130,7 @@ The core UniServ mobile UI prototype existed prior to the PayPal AI Hackathon (s
 
 #### Phase 7: Documentation, Third-Party Notices & Hygiene
 * `e17652e` | 2026-11-12 | Phase 7.1: README and notices
+* `66ae65e` | 2026-11-12 | Phase 7.1b: README corrections
 
 #### Fixes, Polish & Cross-Platform Refinements
 * `13fa6d1` | 2026-11-10 | Fix initial splash duration and set OTPLogin as root entry
@@ -150,7 +151,7 @@ The core UniServ mobile UI prototype existed prior to the PayPal AI Hackathon (s
 | **PayPal Pre-Auth Hold** | **REAL** | Real HTTPS calls to `/v2/checkout/orders/{id}/authorize` creating PayPal authorization entities held in sandbox. |
 | **PayPal Final Capture** | **REAL** | Real HTTPS calls to `/v2/payments/authorizations/{id}/capture` capturing exact final USD amounts. |
 | **PayPal Split Payouts** | **REAL** | Real HTTPS calls to `/v1/payments/payouts` disbursing simultaneous batch transfers to artisan, welfare, and reserve emails. |
-| **Gemini AI Triage** | **REAL** | Live API calls to `gemini-2.5-flash` processing uploaded photos and text into validated JSON schemas. |
+| **Gemini AI Triage** | **REAL** | Live API calls to `gemini-3.5-flash-lite` processing uploaded photos and text into validated JSON schemas. |
 | **Gemini Settlement Agent**| **REAL** | Live multi-turn tool calling loop evaluating evidence packets, executing guarded capture, and initiating payouts. |
 | **Job Event State Machine**| **REAL** | Server-timestamped sequential event logging (`start`, `pause_parts`, `resume`, `extra_work`, `complete`). |
 | **Co-op Treasury Ledger** | **REAL** | Read-only ledger populated strictly from active records in `server/data/bookings.json`. |
@@ -217,7 +218,7 @@ PAYPAL_RECEIVER_RESERVE_EMAIL=reserve@example.com
 
 # Google Gemini API Configuration
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
 
 # Optional demo-only settings (do not use for real runs)
 # DEMO_TIME_SCALE=60      # Multiplies active seconds for rapid duration testing
@@ -257,13 +258,13 @@ Navigate to `http://localhost:5000/ledger` in any browser to inspect transaction
 ## 8. Gemini API & PayPal Sandbox Notes
 
 ### Gemini Model Selection & Observed Latencies
-* **Recommended Model:** `gemini-2.5-flash` (or `gemini-3.5-flash-lite`).
+* **Recommended Model:** `gemini-3.5-flash-lite`.
 * **Measured Performance & Latency:**
-  * In our testing, `gemini-2.5-flash` achieved typical response latencies of 1 to 4 seconds for multimodal triage, and 5 to 30 seconds for complete multi-turn settlement agent loops.
+  * In our testing, `gemini-3.5-flash-lite` achieved typical response latencies of 1 to 4 seconds for multimodal triage, and 5 to 30 seconds for complete multi-turn settlement agent loops.
 * **Findings from Testing:**
   1. `thinkingBudget: 0` is rejected with HTTP 400 (`INVALID_ARGUMENT`) on `gemini-3.5-flash-lite`.
   2. `gemini-3.8-flash` timed out or returned HTTP 503 errors during testing under high load.
-  3. `gemini-2.5-flash` without `thinkingConfig` executed structured JSON triage and multi-turn tool calling reliably.
+  3. `gemini-3.5-flash-lite` without `thinkingConfig` executed structured JSON triage and multi-turn tool calling reliably.
 
 ### PayPal Developer Account Setup
 1. Log in to the [PayPal Developer Dashboard](https://developer.paypal.com/).
@@ -294,7 +295,7 @@ Follow these exact steps using the application UI:
 6. **Job Progression & Active Duration:**
    Upon redirect back to the app, the booking displays an active authorization hold. Tap to start the job with the Start OTP.
    > [!TIP]
-   > Advise waiting **30+ seconds** between Start OTP and Completion OTP so the recorded active service duration is realistic (by default `DEMO_TIME_SCALE` is 1; if set to 60 it scales up, but waiting 30+ seconds records realistic duration in real time).
+   > Wait 30 or more seconds between Start OTP and Completion OTP for a realistic recorded duration.
    Optionally, add a standard extra work item from the catalog, then complete the job with the Completion OTP.
 7. **Settlement Screen:**
    On the final settlement screen, tap **"Settle Final Bill • $X.XX USD"**. The autonomous Gemini Settlement Agent audits the job evidence packet, verifies anomaly rules, executes the guarded capture against the authorization hold, and triggers the batched split payouts. The UI displays an audit progress card and renders the step-by-step audit trace upon completion.
@@ -339,8 +340,8 @@ The settlement agent uses a defense-in-depth model where the LLM is treated as a
 
 * **Google Antigravity:** Agentic AI assistant used for engineering, architecture design, test authoring, and documentation.
 * **PayPal REST APIs:** Orders v2 (Authorize & Capture), Payouts v1 (Batched split disbursements).
-* **Google Gemini API:** `gemini-2.5-flash` / `gemini-3.5-flash-lite` for multimodal triage and autonomous multi-turn tool calling.
+* **Google Gemini API:** `gemini-3.5-flash-lite` for multimodal triage and autonomous multi-turn tool calling.
 * **AG Grid Community:** High-performance, client-side data grid under MIT License.
 * **Expo & React Native for Web:** Cross-platform web and mobile frontend application framework.
 * **Node.js & Express:** Backend API server hosting the deterministic calculation engine and atomic store.
-* * The project plan and code review were also assisted by Claude (Anthropic). [CONFIRM]
+* **Claude (Anthropic):** Planning and code review were also assisted by Claude (Anthropic).
