@@ -1,13 +1,17 @@
 /**
  * ============================================================================
- * UniServ Co-op Treasury Ledger Frontend Client (Phase 6.1)
+ * UniServ Co-op Treasury Ledger Frontend Client (Phase 6.2 - AG Grid Community)
  * ============================================================================
- * Self-contained, dependency-free client for live cooperative transparency.
+ * High-performance, transparent cooperative ledger supporting:
+ *  - Vendored AG Grid Community (pinned local UMD, zero CDN dependency)
+ *  - Automated graceful fallback to plain HTML table if AG Grid fails to load
+ *  - Multi-column sorting, quick filtering, column filtering, pagination
+ *  - Sanitized CSV export matching strict privacy requirements
+ *  - Row inspection panel displaying 4-way breakdown and agent audit trace
  *
  * CRITICAL SECURITY INVARIANT:
- * All store-derived text is rendered strictly using textContent (never innerHTML)
- * to completely eliminate XSS vulnerabilities from user-supplied strings or
- * extra-work descriptions.
+ * All store-derived text is rendered strictly using textContent (never innerHTML).
+ * AG Grid cellRenderers return DOM nodes built with textContent or valueFormatters.
  * ============================================================================
  */
 
@@ -17,8 +21,12 @@
   // State
   let rawRecords = [];
   let currentSummary = null;
+  let gridApi = null;
+  let isAgGridActive = false;
+  let selectedBooking = null;
+
+  // Fallback plain table sort state
   let sortDescending = true;
-  let expandedBookingIds = new Set();
 
   // DOM Elements
   const kpiTotalBookings = document.getElementById('kpiTotalBookings');
@@ -37,14 +45,22 @@
   const connStatusText = document.getElementById('connStatusText');
   const refreshBtn = document.getElementById('refreshBtn');
 
+  const fallbackNotice = document.getElementById('fallbackNotice');
+  const agGridContainer = document.getElementById('agGridContainer');
+  const plainTableContainer = document.getElementById('plainTableContainer');
+  const tableBody = document.getElementById('tableBody');
+  const emptyState = document.getElementById('emptyState');
+
   const searchInput = document.getElementById('searchInput');
   const decisionFilter = document.getElementById('decisionFilter');
   const serviceFilter = document.getElementById('serviceFilter');
   const sortToggleBtn = document.getElementById('sortToggleBtn');
   const downloadCsvBtn = document.getElementById('downloadCsvBtn');
 
-  const tableBody = document.getElementById('tableBody');
-  const emptyState = document.getElementById('emptyState');
+  const detailPanel = document.getElementById('detailPanel');
+  const detailPanelTitle = document.getElementById('detailPanelTitle');
+  const detailPanelBody = document.getElementById('detailPanelBody');
+  const detailCloseBtn = document.getElementById('detailCloseBtn');
 
   /**
    * Helper: creates an element with optional text and className via safe textContent.
@@ -86,7 +102,7 @@
       const data = await res.json();
       currentSummary = data;
 
-      // Update KPI cards with safe textContent
+      // Update KPI cards strictly with textContent
       kpiTotalBookings.textContent = String(data.total_bookings || 0);
       const settledCount = data.counts_by_decision?.SETTLED || 0;
       kpiSettledCount.textContent = settledCount + ' Settled';
@@ -114,7 +130,7 @@
   }
 
   /**
-   * Fetches booking records and updates table.
+   * Fetches booking records and updates grid or plain table.
    */
   async function fetchRecords() {
     try {
@@ -124,7 +140,7 @@
       rawRecords = Array.isArray(data.records) ? data.records : [];
 
       populateServiceFilter(rawRecords);
-      renderTable();
+      renderView();
       updateConnectionStatus(true);
     } catch (err) {
       console.error('Error fetching records:', err);
@@ -145,7 +161,6 @@
       }
     });
 
-    // Clear and rebuild options
     while (serviceFilter.firstChild) {
       serviceFilter.removeChild(serviceFilter.firstChild);
     }
@@ -164,40 +179,255 @@
   }
 
   /**
-   * Filters and sorts the raw records based on UI controls.
+   * Filters the raw records based on dropdown selectors.
    * @returns {Array} Filtered records
    */
   function getFilteredRecords() {
-    const query = (searchInput.value || '').trim().toLowerCase();
     const decisionVal = decisionFilter.value;
     const serviceVal = serviceFilter.value;
 
     return rawRecords.filter(r => {
-      // Decision filter
       if (decisionVal !== 'ALL' && r.decision !== decisionVal) {
         return false;
       }
-      // Service filter
       if (serviceVal !== 'ALL' && r.service_name !== serviceVal) {
         return false;
       }
-      // Text search query
-      if (query) {
-        const bId = (r.booking_id || '').toLowerCase();
-        const svName = (r.service_name || '').toLowerCase();
-        const pStatus = (r.paypal_status || '').toLowerCase();
-        const dec = (r.decision || '').toLowerCase();
-        const pyr = (r.payer || '').toLowerCase();
+      return true;
+    });
+  }
 
-        if (
-          !bId.includes(query) &&
-          !svName.includes(query) &&
-          !pStatus.includes(query) &&
-          !dec.includes(query) &&
-          !pyr.includes(query)
-        ) {
-          return false;
+  // ==========================================================================
+  // AG Grid Community Setup & Column Definitions
+  // ==========================================================================
+
+  function getAgGridColumnDefs() {
+    return [
+      {
+        headerName: 'Decision',
+        field: 'decision',
+        pinned: 'left',
+        width: 120,
+        filter: true,
+        cellRenderer: (params) => {
+          let badgeClass = 'badge-na';
+          if (params.value === 'SETTLED') badgeClass = 'badge-settled';
+          else if (params.value === 'HELD') badgeClass = 'badge-held';
+          else if (params.value === 'PENDING') badgeClass = 'badge-pending';
+          else if (params.value === 'FAILED') badgeClass = 'badge-failed';
+          return el('span', params.value || 'n/a', 'badge ' + badgeClass);
         }
+      },
+      {
+        headerName: 'Booking',
+        field: 'booking_id',
+        width: 105,
+        filter: true,
+        cellRenderer: (params) => el('span', params.value, 'booking-code')
+      },
+      {
+        headerName: 'Time',
+        field: 'created_at',
+        width: 130,
+        sort: 'desc',
+        valueFormatter: (params) => {
+          if (!params.value || params.value === 'n/a') return 'n/a';
+          return new Date(params.value).toLocaleDateString([], {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      },
+      {
+        headerName: 'Service',
+        field: 'service_name',
+        minWidth: 125,
+        flex: 1,
+        filter: true
+      },
+      {
+        headerName: 'Type',
+        field: 'booking_type',
+        width: 90
+      },
+      {
+        headerName: 'Data Mode',
+        field: 'data_mode',
+        width: 115,
+        cellRenderer: (params) => el('span', params.value, 'badge-mode')
+      },
+      {
+        headerName: 'Agent Mode',
+        field: 'agent_mode',
+        width: 120,
+        cellRenderer: (params) => el('span', params.value, 'badge-agent')
+      },
+      {
+        headerName: 'Final Bill',
+        field: 'final_bill_usd',
+        width: 100,
+        type: 'numericColumn',
+        valueFormatter: (params) => '$' + (params.value || '0.00')
+      },
+      {
+        headerName: 'Captured',
+        field: 'captured_usd',
+        width: 100,
+        type: 'numericColumn',
+        valueFormatter: (params) => '$' + (params.value || '0.00')
+      },
+      {
+        headerName: 'Artisan (80%)',
+        width: 135,
+        type: 'numericColumn',
+        valueGetter: (params) => {
+          const b = params.data?.breakdown;
+          return '$' + (b?.artisan_wages_usd || '0.00') + ' (' + (b?.artisan_status || 'n/a') + ')';
+        }
+      },
+      {
+        headerName: 'Welfare (10%)',
+        width: 130,
+        type: 'numericColumn',
+        valueGetter: (params) => {
+          const b = params.data?.breakdown;
+          return '$' + (b?.welfare_usd || '0.00') + ' (' + (b?.welfare_status || 'n/a') + ')';
+        }
+      },
+      {
+        headerName: 'Reserve (6%)',
+        width: 130,
+        type: 'numericColumn',
+        valueGetter: (params) => {
+          const b = params.data?.breakdown;
+          return '$' + (b?.reserve_usd || '0.00') + ' (' + (b?.reserve_status || 'n/a') + ')';
+        }
+      },
+      {
+        headerName: 'Retained (4%)',
+        width: 110,
+        type: 'numericColumn',
+        valueGetter: (params) => '$' + (params.data?.breakdown?.platform_retained_usd || '0.00')
+      },
+      {
+        headerName: 'PayPal IDs',
+        width: 130,
+        valueGetter: (params) => {
+          const d = params.data;
+          const cap = d?.capture_id ? 'Cap:' + d.capture_id : '';
+          const pay = d?.payout_batch_id ? 'Pay:' + d.payout_batch_id : '';
+          return [cap, pay].filter(Boolean).join(' ') || 'None';
+        }
+      },
+      {
+        headerName: 'Policy Flags',
+        field: 'policy_flags',
+        width: 130,
+        cellRenderer: (params) => {
+          if (Array.isArray(params.value) && params.value.length > 0) {
+            return el('span', params.value.join(', '), 'flags-pill');
+          } else if (Array.isArray(params.value) && params.value.length === 0) {
+            return el('span', 'None', 'badge-na');
+          }
+          return el('span', String(params.value || 'n/a'), 'badge-na');
+        }
+      }
+    ];
+  }
+
+  /**
+   * Initializes or updates AG Grid Community.
+   */
+  function initOrUpdateAgGrid(records) {
+    if (!gridApi) {
+      const gridOptions = {
+        theme: 'legacy',
+        columnDefs: getAgGridColumnDefs(),
+        rowData: records,
+        pagination: true,
+        paginationPageSize: 10,
+        paginationPageSizeSelector: [10, 20, 50, 100],
+        rowSelection: { mode: 'singleRow', enableClickSelection: true },
+        defaultColDef: {
+          sortable: true,
+          resizable: true,
+          filter: true
+        },
+        onRowClicked: (event) => {
+          if (event.data) {
+            showRecordDetail(event.data);
+          }
+        }
+      };
+
+      gridApi = agGrid.createGrid(agGridContainer, gridOptions);
+      isAgGridActive = true;
+    } else {
+      gridApi.setGridOption('rowData', records);
+    }
+
+    // Apply active search filter
+    if (searchInput.value) {
+      gridApi.setGridOption('quickFilterText', searchInput.value);
+    }
+  }
+
+  /**
+   * Renders the primary view (AG Grid or fallback plain table).
+   */
+  function renderView() {
+    const filtered = getFilteredRecords();
+
+    // Check if AG Grid is available on window
+    const agGridAvailable = typeof agGrid !== 'undefined' && agGrid && typeof agGrid.createGrid === 'function';
+
+    if (agGridAvailable) {
+      try {
+        agGridContainer.style.display = 'block';
+        plainTableContainer.style.display = 'none';
+        fallbackNotice.style.display = 'none';
+        sortToggleBtn.style.display = 'none';
+
+        initOrUpdateAgGrid(filtered);
+
+        if (filtered.length === 0) {
+          emptyState.style.display = 'block';
+        } else {
+          emptyState.style.display = 'none';
+        }
+        return;
+      } catch (err) {
+        console.warn('AG Grid initialization failed, falling back to plain table:', err);
+      }
+    }
+
+    // Fallback to plain table
+    renderPlainTableFallback(filtered);
+  }
+
+  /**
+   * Fallback Plain Table Renderer (from Stage 6.1).
+   * Rendered strictly with textContent.
+   * @param {Array} records
+   */
+  function renderPlainTableFallback(records) {
+    isAgGridActive = false;
+    agGridContainer.style.display = 'none';
+    plainTableContainer.style.display = 'block';
+    fallbackNotice.style.display = 'flex';
+    sortToggleBtn.style.display = 'inline-flex';
+
+    while (tableBody.firstChild) {
+      tableBody.removeChild(tableBody.firstChild);
+    }
+
+    const query = (searchInput.value || '').trim().toLowerCase();
+    const sorted = records.filter(r => {
+      if (query) {
+        const str = [r.booking_id, r.service_name, r.paypal_status, r.decision, r.payer].join(' ').toLowerCase();
+        return str.includes(query);
       }
       return true;
     }).sort((a, b) => {
@@ -205,43 +435,25 @@
       const timeB = new Date(b.created_at).getTime() || 0;
       return sortDescending ? timeB - timeA : timeA - timeB;
     });
-  }
 
-  /**
-   * Renders the table body strictly with DOM nodes and textContent.
-   */
-  function renderTable() {
-    const filtered = getFilteredRecords();
-
-    // Clear existing rows safely
-    while (tableBody.firstChild) {
-      tableBody.removeChild(tableBody.firstChild);
-    }
-
-    if (filtered.length === 0) {
+    if (sorted.length === 0) {
       emptyState.style.display = 'block';
       return;
     }
     emptyState.style.display = 'none';
 
-    filtered.forEach(record => {
-      const isExpanded = expandedBookingIds.has(record.booking_id);
+    sorted.forEach(record => {
+      const tr = el('tr', null, 'row-item');
+      tr.addEventListener('click', () => showRecordDetail(record));
 
-      // Main Row
-      const tr = el('tr', null, 'row-item' + (isExpanded ? ' expanded' : ''));
-      tr.addEventListener('click', () => toggleRowExpand(record.booking_id));
-
-      // Expand Icon
+      // Expand icon
       const tdExpand = el('td', null, null);
-      const btnExpand = el('button', '▶', 'expand-btn');
-      btnExpand.setAttribute('aria-label', 'Toggle details for booking ' + record.booking_id);
-      tdExpand.appendChild(btnExpand);
+      tdExpand.appendChild(el('span', '▶', 'expand-btn'));
       tr.appendChild(tdExpand);
 
-      // Booking ID (Last 8)
+      // Booking ID
       const tdId = el('td', null, null);
-      const codeSpan = el('span', record.booking_id, 'booking-code');
-      tdId.appendChild(codeSpan);
+      tdId.appendChild(el('span', record.booking_id, 'booking-code'));
       tr.appendChild(tdId);
 
       // Created At
@@ -279,7 +491,7 @@
       // PayPal Status
       tr.appendChild(el('td', record.paypal_status));
 
-      // Financial columns (num-col)
+      // Amounts
       tr.appendChild(el('td', '$' + record.authorized_usd, 'num-col'));
       tr.appendChild(el('td', '$' + record.captured_usd, 'num-col'));
       tr.appendChild(el('td', '$' + (record.breakdown?.artisan_wages_usd || '0.00'), 'num-col'));
@@ -303,29 +515,31 @@
       tr.appendChild(tdFlags);
 
       tableBody.appendChild(tr);
-
-      // If Expanded, append detail row
-      if (isExpanded) {
-        tableBody.appendChild(buildDetailRow(record));
-      }
     });
   }
 
+  // ==========================================================================
+  // Selected Booking Detail & Audit Trace Inspector
+  // ==========================================================================
+
   /**
-   * Builds the expandable detail row for a record.
+   * Renders the detailed inspection panel for a selected booking.
    * Rendered strictly with textContent for complete XSS safety.
    * @param {object} record
-   * @returns {HTMLElement}
    */
-  function buildDetailRow(record) {
-    const tr = el('tr', null, 'detail-row');
-    const td = el('td', null, null);
-    td.colSpan = 17;
+  function showRecordDetail(record) {
+    selectedBooking = record;
+    detailPanel.style.display = 'block';
 
-    const container = el('div', null, 'detail-container');
+    detailPanelTitle.textContent = 'Booking ...' + record.booking_id + ' Details & Settlement Trace';
+
+    while (detailPanelBody.firstChild) {
+      detailPanelBody.removeChild(detailPanelBody.firstChild);
+    }
+
     const grid = el('div', null, 'detail-grid');
 
-    // Card 1: PayPal Transaction Identifiers
+    // Card 1: PayPal Identifiers
     const idCard = el('div', null, 'detail-card');
     idCard.appendChild(el('div', 'PayPal Identifiers', 'detail-card-title'));
 
@@ -346,42 +560,66 @@
 
     grid.appendChild(idCard);
 
-    // Card 2: Service & Execution Metrics
-    const metricsCard = el('div', null, 'detail-card');
-    metricsCard.appendChild(el('div', 'Service & Timing', 'detail-card-title'));
+    // Card 2: Financial Breakdown
+    const finCard = el('div', null, 'detail-card');
+    finCard.appendChild(el('div', 'Fair-Wage & Welfare Breakdown', 'detail-card-title'));
+
+    const itemArt = el('div', null, 'detail-item');
+    itemArt.appendChild(el('span', 'Artisan Wages (80%)', 'detail-key'));
+    itemArt.appendChild(el('span', '$' + (record.breakdown?.artisan_wages_usd || '0.00') + ' (' + (record.breakdown?.artisan_status || 'n/a') + ')', 'detail-val'));
+    finCard.appendChild(itemArt);
+
+    const itemWelf = el('div', null, 'detail-item');
+    itemWelf.appendChild(el('span', 'Welfare Fund (10%)', 'detail-key'));
+    itemWelf.appendChild(el('span', '$' + (record.breakdown?.welfare_usd || '0.00') + ' (' + (record.breakdown?.welfare_status || 'n/a') + ')', 'detail-val'));
+    finCard.appendChild(itemWelf);
+
+    const itemRes = el('div', null, 'detail-item');
+    itemRes.appendChild(el('span', 'Emergency Reserve (6%)', 'detail-key'));
+    itemRes.appendChild(el('span', '$' + (record.breakdown?.reserve_usd || '0.00') + ' (' + (record.breakdown?.reserve_status || 'n/a') + ')', 'detail-val'));
+    finCard.appendChild(itemRes);
+
+    const itemRet = el('div', null, 'detail-item');
+    itemRet.appendChild(el('span', 'Platform Retained (4%)', 'detail-key'));
+    itemRet.appendChild(el('span', '$' + (record.breakdown?.platform_retained_usd || '0.00') + ' (before fee)', 'detail-val'));
+    finCard.appendChild(itemRet);
+
+    grid.appendChild(finCard);
+
+    // Card 3: Service & Timing
+    const timeCard = el('div', null, 'detail-card');
+    timeCard.appendChild(el('div', 'Service & Timing Metrics', 'detail-card-title'));
 
     const itemType = el('div', null, 'detail-item');
     itemType.appendChild(el('span', 'Booking Type', 'detail-key'));
     itemType.appendChild(el('span', record.booking_type, 'detail-val'));
-    metricsCard.appendChild(itemType);
+    timeCard.appendChild(itemType);
 
     const itemSec = el('div', null, 'detail-item');
     itemSec.appendChild(el('span', 'Active Service Duration', 'detail-key'));
-    const secVal = record.active_seconds !== 'n/a' ? record.active_seconds + ' s' : 'n/a';
-    itemSec.appendChild(el('span', secVal, 'detail-val'));
-    metricsCard.appendChild(itemSec);
+    itemSec.appendChild(el('span', record.active_seconds !== 'n/a' ? record.active_seconds + ' s' : 'n/a', 'detail-val'));
+    timeCard.appendChild(itemSec);
 
     const itemFee = el('div', null, 'detail-item');
-    itemFee.appendChild(el('span', 'PayPal Fee (Recorded)', 'detail-key'));
+    itemFee.appendChild(el('span', 'Recorded PayPal Fee', 'detail-key'));
     itemFee.appendChild(el('span', record.breakdown?.paypal_fee_usd !== 'n/a' ? '$' + record.breakdown.paypal_fee_usd : 'n/a', 'detail-val'));
-    metricsCard.appendChild(itemFee);
+    timeCard.appendChild(itemFee);
 
-    grid.appendChild(metricsCard);
+    grid.appendChild(timeCard);
 
-    // Card 3: Extra Work Details (Safely rendered via textContent)
+    // Card 4: Extra Work Notes (textContent strictly)
     const extraCard = el('div', null, 'detail-card');
     extraCard.appendChild(el('div', 'Extra Work Notes', 'detail-card-title'));
 
     const itemExtra = el('div', null, 'detail-item');
-    itemExtra.appendChild(el('span', 'Description', 'detail-key'));
-    // CRITICAL: extra_work_description rendered strictly as textContent
+    itemExtra.appendChild(el('span', 'Notes', 'detail-key'));
     const extraVal = el('span', record.extra_work_description, 'detail-val');
     extraVal.style.whiteSpace = 'normal';
     itemExtra.appendChild(extraVal);
     extraCard.appendChild(itemExtra);
 
     grid.appendChild(extraCard);
-    container.appendChild(grid);
+    detailPanelBody.appendChild(grid);
 
     // Agent Trace Timeline
     if (Array.isArray(record.trace) && record.trace.length > 0) {
@@ -400,7 +638,6 @@
         }
         item.appendChild(header);
 
-        // Render summary details if available
         const detailsObj = {};
         if (step.decision) detailsObj.decision = step.decision;
         if (step.reason) detailsObj.reason = step.reason;
@@ -420,30 +657,21 @@
         list.appendChild(item);
       });
       traceCard.appendChild(list);
-      container.appendChild(traceCard);
+      detailPanelBody.appendChild(traceCard);
     }
 
-    td.appendChild(container);
-    tr.appendChild(td);
-    return tr;
+    detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  /**
-   * Toggles the row expansion state for a booking ID.
-   * @param {string} bookingId
-   */
-  function toggleRowExpand(bookingId) {
-    if (expandedBookingIds.has(bookingId)) {
-      expandedBookingIds.delete(bookingId);
-    } else {
-      expandedBookingIds.add(bookingId);
-    }
-    renderTable();
-  }
+  detailCloseBtn.addEventListener('click', () => {
+    detailPanel.style.display = 'none';
+    selectedBooking = null;
+  });
 
-  /**
-   * Generates and downloads RFC 4180 compliant CSV of filtered rows.
-   */
+  // ==========================================================================
+  // CSV Export (Sanitized: NO emails, NO full IDs)
+  // ==========================================================================
+
   function downloadCsv() {
     const filtered = getFilteredRecords();
     if (filtered.length === 0) {
@@ -461,7 +689,7 @@
       'Agent Mode',
       'Decision',
       'PayPal Status',
-      'Authorized USD',
+      'Final Bill USD',
       'Captured USD',
       'Artisan Wages USD',
       'Welfare USD',
@@ -499,7 +727,7 @@
         r.agent_mode,
         r.decision,
         r.paypal_status,
-        r.authorized_usd,
+        r.final_bill_usd || r.authorized_usd,
         r.captured_usd,
         r.breakdown?.artisan_wages_usd || '0.00',
         r.breakdown?.welfare_usd || '0.00',
@@ -528,14 +756,21 @@
   }
 
   // Event Listeners
-  searchInput.addEventListener('input', renderTable);
-  decisionFilter.addEventListener('change', renderTable);
-  serviceFilter.addEventListener('change', renderTable);
+  searchInput.addEventListener('input', () => {
+    if (isAgGridActive && gridApi) {
+      gridApi.setGridOption('quickFilterText', searchInput.value);
+    } else {
+      renderView();
+    }
+  });
+
+  decisionFilter.addEventListener('change', renderView);
+  serviceFilter.addEventListener('change', renderView);
 
   sortToggleBtn.addEventListener('click', () => {
     sortDescending = !sortDescending;
     sortToggleBtn.textContent = sortDescending ? 'Sort: Newest First' : 'Sort: Oldest First';
-    renderTable();
+    renderView();
   });
 
   downloadCsvBtn.addEventListener('click', downloadCsv);

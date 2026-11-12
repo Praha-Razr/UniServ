@@ -1,5 +1,5 @@
 /* ==========================================================================
-   UniServ Co-op Treasury Ledger Stylesheet
+   UniServ Co-op Treasury Ledger Stylesheet (Phase 6.2 - AG Grid Edition)
    ========================================================================== */
 
 :root {
@@ -65,7 +65,7 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .header-left {
@@ -137,6 +137,24 @@ body {
   font-size: 0.8rem;
   color: var(--text-dim);
   font-family: var(--font-mono);
+}
+
+/* Fallback Notice Banner */
+.fallback-notice {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #FCD34D;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.fallback-icon {
+  font-size: 1.1rem;
 }
 
 /* KPI Grid */
@@ -221,7 +239,7 @@ body {
   padding: 8px 12px 8px 32px;
   border-radius: 8px;
   font-size: 0.85rem;
-  width: 260px;
+  width: 280px;
   outline: none;
   transition: border-color 0.15s ease;
 }
@@ -294,15 +312,47 @@ body {
   font-size: 0.775rem;
 }
 
-/* Table Section */
+/* Main Display Card */
 .table-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  margin-bottom: 20px;
 }
 
+/* AG Grid Quartz Dark Customization */
+.ag-theme-quartz-dark {
+  --ag-background-color: #1E293B;
+  --ag-header-background-color: #182234;
+  --ag-odd-row-background-color: #1E293B;
+  --ag-border-color: #334155;
+  --ag-header-column-separator-display: block;
+  --ag-header-column-separator-color: #334155;
+  --ag-row-hover-color: #26354D;
+  --ag-selected-row-background-color: rgba(99, 102, 241, 0.2);
+  --ag-font-family: var(--font-family);
+  --ag-font-size: 13px;
+  --ag-grid-size: 6px;
+  --ag-row-height: 42px;
+  --ag-header-height: 42px;
+  width: 100%;
+}
+
+.ag-theme-quartz-dark .ag-cell {
+  line-height: 42px;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+}
+
+.ag-theme-quartz-dark .ag-header-cell-label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Plain Table (Fallback) */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
@@ -346,28 +396,6 @@ body {
   background-color: var(--bg-card-hover);
 }
 
-.ledger-table tbody tr.row-item.expanded {
-  background-color: #1A2436;
-}
-
-.expand-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease;
-}
-
-.row-item.expanded .expand-btn {
-  transform: rotate(90deg);
-  color: var(--primary);
-}
-
 /* Badges */
 .badge {
   display: inline-block;
@@ -377,6 +405,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  line-height: 1.2;
 }
 
 .badge-settled {
@@ -417,6 +446,7 @@ body {
   color: #A5B4FC;
   border: 1px solid rgba(99, 102, 241, 0.3);
   font-family: var(--font-mono);
+  line-height: 1.2;
 }
 
 .badge-agent {
@@ -427,6 +457,7 @@ body {
   color: #7DD3FC;
   border: 1px solid rgba(56, 189, 248, 0.3);
   font-family: var(--font-mono);
+  line-height: 1.2;
 }
 
 .booking-code {
@@ -442,35 +473,66 @@ body {
   color: #FCA5A5;
   padding: 2px 6px;
   border-radius: 4px;
+  line-height: 1.2;
 }
 
-/* Detail Drawer Row */
-.detail-row {
-  background: #131D2E;
+/* Detail Inspector Panel Section */
+.detail-panel-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  border-left: 4px solid var(--primary);
 }
 
-.detail-row td {
-  padding: 0 !important;
+.detail-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
 }
 
-.detail-container {
-  padding: 16px 24px;
-  border-top: 1px dashed #334155;
-  border-bottom: 2px solid var(--primary);
+.detail-panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.detail-close-btn:hover {
+  background: #334155;
+  color: #FFF;
 }
 
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .detail-card {
-  background: #1A2436;
+  background: #131D2E;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 14px 16px;
 }
 
 .detail-card-title {
@@ -479,14 +541,14 @@ body {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .detail-item {
   display: flex;
   justify-content: space-between;
   font-size: 0.8rem;
-  padding: 4px 0;
+  padding: 5px 0;
   border-bottom: 1px solid rgba(51, 65, 85, 0.3);
 }
 
@@ -506,23 +568,23 @@ body {
 
 /* Trace Timeline */
 .trace-card {
-  background: #1A2436;
+  background: #131D2E;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 14px;
+  padding: 16px;
 }
 
 .trace-title {
-  font-size: 0.8rem;
+  font-size: 0.825rem;
   font-weight: 700;
   color: var(--text-main);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .trace-list {
   list-style: none;
   position: relative;
-  padding-left: 18px;
+  padding-left: 20px;
 }
 
 .trace-list::before {
@@ -537,14 +599,14 @@ body {
 
 .trace-item {
   position: relative;
-  margin-bottom: 8px;
-  font-size: 0.775rem;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
 }
 
 .trace-item::before {
   content: "";
   position: absolute;
-  left: -16px;
+  left: -18px;
   top: 5px;
   width: 8px;
   height: 8px;
@@ -560,14 +622,17 @@ body {
 
 .trace-step-time {
   color: var(--text-dim);
-  font-size: 0.7rem;
-  margin-left: 6px;
+  font-size: 0.725rem;
+  margin-left: 8px;
 }
 
 .trace-step-details {
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 0.75rem;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 /* Empty State */
@@ -593,10 +658,17 @@ body {
   color: var(--text-muted);
 }
 
-/* Footer */
+/* Footer & AG Grid Attribution */
 .app-footer {
   margin-top: 32px;
   text-align: center;
   font-size: 0.75rem;
   color: var(--text-dim);
+}
+
+.ag-attribution {
+  margin-top: 6px;
+  font-size: 0.725rem;
+  color: var(--text-dim);
+  font-weight: 500;
 }

@@ -264,6 +264,16 @@ function sanitizeRecord(booking) {
     }
   }
 
+  // Final bill cents
+  let finalBillCents = 0;
+  if (booking.evidence?.engine_totals?.final_usd_cents != null) {
+    finalBillCents = booking.evidence.engine_totals.final_usd_cents;
+  } else if (capturedCents > 0) {
+    finalBillCents = capturedCents;
+  } else if (authorizedCents > 0) {
+    finalBillCents = authorizedCents;
+  }
+
   // Active seconds
   const activeSeconds = booking.activeSeconds != null ? Number(booking.activeSeconds) : 'n/a';
 
@@ -294,11 +304,15 @@ function sanitizeRecord(booking) {
     decision,
     paypal_status: booking.captureStatus || booking.status || 'n/a',
     authorized_usd: (authorizedCents / 100).toFixed(2),
+    final_bill_usd: (finalBillCents / 100).toFixed(2),
     captured_usd: (capturedCents / 100).toFixed(2),
     breakdown: {
       artisan_wages_usd: rowPayouts.artisanPaidUsd,
+      artisan_status: rowPayouts.artisanStatus,
       welfare_usd: rowPayouts.welfarePaidUsd,
+      welfare_status: rowPayouts.welfareStatus,
       reserve_usd: rowPayouts.reservePaidUsd,
+      reserve_status: rowPayouts.reserveStatus,
       platform_retained_usd: rowPayouts.platformRetainedUsd,
       paypal_fee_usd: paypalFeeUsd
     },

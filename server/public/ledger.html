@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UniServ Co-op Treasury Ledger</title>
+  <!-- Vendored AG Grid Community (MIT License, v36.3.0) -->
+  <link rel="stylesheet" href="/vendor/ag-grid/ag-grid.min.css">
+  <link rel="stylesheet" href="/vendor/ag-grid/ag-theme-quartz.min.css">
+  <!-- Application Stylesheet -->
   <link rel="stylesheet" href="/ledger.css">
 </head>
 <body>
@@ -33,6 +37,12 @@
         </button>
       </div>
     </header>
+
+    <!-- Fallback Notification (Only shown if AG Grid fails or offline) -->
+    <div class="fallback-notice" id="fallbackNotice" style="display: none;">
+      <span class="fallback-icon">⚠️</span>
+      <span>Standard Table Active (AG Grid Community unavailable; running in zero-dependency fallback mode)</span>
+    </div>
 
     <!-- KPI Summary Grid -->
     <section class="kpi-section" aria-label="Treasury Financial Summary">
@@ -83,7 +93,7 @@
       <div class="controls-left">
         <div class="search-box">
           <span class="search-icon">🔍</span>
-          <input type="text" id="searchInput" placeholder="Search by booking ID, service, status..." autocomplete="off">
+          <input type="text" id="searchInput" placeholder="Quick filter across all columns..." autocomplete="off">
         </div>
         <div class="select-group">
           <label for="decisionFilter">Decision:</label>
@@ -104,7 +114,7 @@
         </div>
       </div>
       <div class="controls-right">
-        <button class="btn btn-secondary" id="sortToggleBtn">
+        <button class="btn btn-secondary" id="sortToggleBtn" style="display: none;">
           Sort: Newest First
         </button>
         <button class="btn btn-primary" id="downloadCsvBtn">
@@ -113,9 +123,13 @@
       </div>
     </section>
 
-    <!-- Table Section -->
-    <section class="table-card">
-      <div class="table-responsive">
+    <!-- Grid / Table View Container -->
+    <section class="table-card" id="mainDisplayCard">
+      <!-- AG Grid Community Container -->
+      <div id="agGridContainer" class="ag-theme-quartz-dark" style="height: 520px; width: 100%;"></div>
+
+      <!-- Plain Table Fallback (Shown if AG Grid unavailable) -->
+      <div class="table-responsive" id="plainTableContainer" style="display: none;">
         <table class="ledger-table" id="ledgerTable">
           <thead>
             <tr>
@@ -138,9 +152,7 @@
               <th>Flags</th>
             </tr>
           </thead>
-          <tbody id="tableBody">
-            <!-- Rendered by ledger.js via safe textContent -->
-          </tbody>
+          <tbody id="tableBody"></tbody>
         </table>
       </div>
 
@@ -152,12 +164,26 @@
       </div>
     </section>
 
-    <!-- Footer Note -->
+    <!-- Selected Record Detail & Audit Trace Panel -->
+    <section class="detail-panel-section" id="detailPanel" style="display: none;">
+      <div class="detail-panel-header">
+        <div class="detail-panel-title" id="detailPanelTitle">Booking Details &amp; Settlement Trace</div>
+        <button class="detail-close-btn" id="detailCloseBtn" title="Close details">✕</button>
+      </div>
+      <div id="detailPanelBody">
+        <!-- Rendered safely via textContent -->
+      </div>
+    </section>
+
+    <!-- Footer Note with AG Grid Attribution -->
     <footer class="app-footer">
       <p>UniServ Platform • Read-Only Co-op Treasury Ledger • Operating in PayPal Sandbox Mode</p>
+      <p class="ag-attribution">Powered by AG Grid Community</p>
     </footer>
   </div>
 
+  <!-- Load vendored AG Grid Community first, then ledger logic -->
+  <script src="/vendor/ag-grid/ag-grid-community.min.js"></script>
   <script src="/ledger.js"></script>
 </body>
 </html>
