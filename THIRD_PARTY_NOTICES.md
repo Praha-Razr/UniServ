@@ -1,6 +1,6 @@
 # Third-Party Software Notices and Licenses
 
-This project incorporates components from the following open-source software packages:
+This project incorporates open-source libraries, web map services, and media assets. This document details their licensing and attribution.
 
 ---
 
@@ -10,19 +10,15 @@ This project incorporates components from the following open-source software pac
 * **Version:** `36.3.0`
 * **License:** MIT License
 * **Copyright:** (c) 2015-2026 AG GRID LTD
-* **Website:** https://www.ag-grid.com/
-* **Repository:** https://github.com/ag-grid/ag-grid
 * **Files Vendored:**
   * `server/public/vendor/ag-grid/ag-grid-community.min.js`
   * `server/public/vendor/ag-grid/ag-grid.min.css`
   * `server/public/vendor/ag-grid/ag-theme-quartz.min.css`
   * `server/public/vendor/ag-grid/LICENSE.txt`
 
-### License Text (MIT):
-
+### License Text:
 ```
-The MIT License
-
+The MIT License (MIT)
 Copyright (c) 2015-2026 AG GRID LTD
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -43,3 +39,60 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+## 2. Core Frontend & Framework Dependencies
+
+| Package | Version | License | Copyright / Publisher |
+|---|---|---|---|
+| `react` | `19.2.3` | MIT | Meta Platforms, Inc. |
+| `react-dom` | `19.2.3` | MIT | Meta Platforms, Inc. |
+| `react-native` | `0.86.3` | MIT | Meta Platforms, Inc. |
+| `react-native-web` | `0.21.2` | MIT | Nicolas Gallagher |
+| `expo` | `~57.0.18` | MIT | 650 Industries, Inc. (Expo) |
+| `@expo/vector-icons` | `^15.0.2` | MIT | Expo Team |
+| `@react-navigation/*` | `^7.x` | MIT | React Navigation Contributors |
+| `@react-native-async-storage/async-storage` | `2.2.0` | MIT | React Native Community |
+| `react-native-safe-area-context` | `~5.7.0` | MIT | Janic Duplessis |
+| `react-native-screens` | `~4.26.0` | MIT | Software Mansion S.A. |
+| `react-native-svg` | `15.15.4` | MIT | Horcrux & React Native Community |
+
+---
+
+## 3. Core Server Dependencies
+
+| Package | Version | License | Copyright / Publisher |
+|---|---|---|---|
+| `express` | `^4.21.2` | MIT | StrongLoop, Inc. & Express Contributors |
+| `cors` | `^2.8.5` | MIT | Troy Goode |
+| `dotenv` | `^16.4.7` | BSD-2-Clause | Scott Motte |
+
+---
+
+## 4. Map Engine, Routing & Tile Services
+
+* **Leaflet (`1.9.4`)**:
+  * **License:** BSD-2-Clause
+  * **Copyright:** (c) 2010-2023, Vladimir Agafonkin; (c) 2010-2011, CloudMade.
+* **OpenStreetMap**:
+  * **Data License:** Open Data Commons Open Database License (ODbL) 1.0.
+  * **Attribution:** (c) OpenStreetMap contributors (https://www.openstreetmap.org/copyright).
+* **CartoDB Voyager Tiles**:
+  * **License:** Creative Commons Attribution (CC BY 4.0).
+  * **Attribution:** Map tiles (c) CARTO; Data (c) OpenStreetMap contributors.
+* **Esri World Imagery**:
+  * **Attribution:** (c) Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community.
+* **Project OSRM (router.project-osrm.org)**:
+  * **License:** BSD-2-Clause (Project OSRM contributors).
+
+---
+
+## 5. Media & Photography Assets
+
+* **Unsplash Stock Photos (used in mock cooperative profiles and sample extra-work attachments)**:
+  * **License:** Unsplash License (https://unsplash.com/license).
+  * **Terms:** Free commercial and non-commercial use, no permission or attribution required.
+* **Ionicons (`@expo/vector-icons/Ionicons`)**:
+  * **License:** MIT License.
+  * **Copyright:** (c) 2015-present Ionic (https://ionic.io/).
