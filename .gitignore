@@ -50,3 +50,13 @@ scratch/
 # generated native folders
 /ios
 /android
+
+# legacy / local design notes
+UNISERV_COMPLETE_APP_DOCUMENTATION.txt
+UniServ TechStack.txt
+UniServ_User_App_Build_Plan.txt
+Uniserve(user app build plan).txt
+worker-app-techstack.txt
+AGENTS.md
+CLAUDE.md
+docs/IVRS_ARCHITECTURE_SPEC.md
