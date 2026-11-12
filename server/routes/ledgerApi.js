@@ -27,6 +27,7 @@
 const express = require('express');
 const router = express.Router();
 const store = require('../store');
+const { deriveBillFromEvents } = require('../services/jobEventService');
 
 /**
  * Derives the honest settlement decision label.
@@ -274,8 +275,20 @@ function sanitizeRecord(booking) {
     finalBillCents = authorizedCents;
   }
 
-  // Active seconds
-  const activeSeconds = booking.activeSeconds != null ? Number(booking.activeSeconds) : 'n/a';
+  // Active seconds: reads stored field, evidence packet, or calculates from events
+  let activeSeconds = 'n/a';
+  if (booking.activeSeconds != null) {
+    activeSeconds = Number(booking.activeSeconds);
+  } else if (booking.evidence?.active_seconds != null) {
+    activeSeconds = Number(booking.evidence.active_seconds);
+  } else if (Array.isArray(booking.events) && booking.events.length > 0) {
+    try {
+      const calc = deriveBillFromEvents(booking.evidence, booking.events);
+      if (calc && Number.isInteger(calc.activeSeconds)) {
+        activeSeconds = calc.activeSeconds;
+      }
+    } catch (e) {}
+  }
 
   // PayPal fee when known
   const paypalFeeUsd = booking.paypal_fee_usd != null && booking.paypal_fee_usd !== ''

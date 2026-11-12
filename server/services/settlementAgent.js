@@ -137,12 +137,24 @@ function createRealPayPalExecutors({ paypalClient: ppClient, payoutService: poSe
       const isCompleted = captureResult.status === 'COMPLETED';
       const newStatus = isCompleted ? 'CAPTURED' : (captureResult.status === 'PENDING' ? 'CAPTURE_PENDING' : 'FAILED');
 
+      let activeSec = booking.activeSeconds;
+      if (activeSec == null && Array.isArray(booking.events) && booking.events.length > 0) {
+        try {
+          const { deriveBillFromEvents } = require('./jobEventService');
+          const calc = deriveBillFromEvents(booking.evidence, booking.events);
+          if (calc && Number.isInteger(calc.activeSeconds)) {
+            activeSec = calc.activeSeconds;
+          }
+        } catch (e) {}
+      }
+
       s.updateBooking(booking.bookingId, {
         status: newStatus,
         captureId: captureResult.captureId,
         captureStatus: captureResult.status,
         capturedCents: amount_usd_cents,
         capturedAmountUsd: finalAmountUsd,
+        activeSeconds: activeSec != null ? activeSec : null,
         paypal_fee_usd: captureResult.paypalFeeUsd || null,
         capturedAt: new Date().toISOString(),
         stage: '3.1',

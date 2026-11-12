@@ -97,3 +97,80 @@ test('Test 4: ledger.js strictly adheres to NO innerHTML invariant', () => {
   assert.ok(js.includes('.textContent ='), 'ledger.js must use textContent for rendering text');
   assert.ok(js.includes('agGrid.createGrid'), 'ledger.js must call agGrid.createGrid');
 });
+
+// ----------------------------------------------------------------------------
+// Test 5: PayPal IDs Column Width (Cap:xxxx Pay:xxxx not clipped)
+// ----------------------------------------------------------------------------
+test('Test 5: PayPal IDs column width is at least 160px to prevent clipping', () => {
+  const js = fs.readFileSync(LEDGER_JS, 'utf8');
+  const match = js.match(/headerName:\s*['"]PayPal IDs['"],\s*width:\s*(\d+)/);
+  assert.ok(match, 'PayPal IDs column definition should specify width');
+  const width = parseInt(match[1], 10);
+  assert.ok(width >= 160, `PayPal IDs column width is ${width}px, expected >= 160px`);
+});
+
+// ----------------------------------------------------------------------------
+// Test 6: Active Service Duration Resolution on Agent-Settled Bookings
+// ----------------------------------------------------------------------------
+test('Test 6: Active seconds resolves from events for agent-settled bookings', () => {
+  const ledgerRouter = require('../server/routes/ledgerApi');
+  const store = require('../server/store');
+  const os = require('os');
+
+  const testTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'uniserv-test-duration-'));
+  const testStoreFile = path.join(testTempDir, 'bookings.json');
+  store.setStorePath(testStoreFile);
+
+  try {
+    store.writeAll({
+      // Agent-settled booking with events but missing direct activeSeconds field
+      'BK_AGENT_SETTLED_01': {
+        bookingId: 'BK_AGENT_SETTLED_01',
+        status: 'CAPTURED',
+        captureStatus: 'COMPLETED',
+        mode: 'REAL_SANDBOX',
+        evidence: {
+          service: { id: 's1', name: 'Plumber', start_price: 99 },
+          booking_type: 'emergency'
+        },
+        events: [
+          { id: 'evt_1', type: 'start', timestamp: '2026-11-11T12:00:00.000Z' },
+          { id: 'evt_2', type: 'complete', timestamp: '2026-11-11T12:01:30.000Z' }
+        ]
+      },
+      // Truly unknown booking without events or duration
+      'BK_UNKNOWN_02': {
+        bookingId: 'BK_UNKNOWN_02',
+        status: 'CREATED'
+      }
+    });
+
+    const records = Object.values(store.readAll());
+    // Direct call to route logic
+    let resolvedAgentSec = null;
+    let resolvedUnknownSec = null;
+
+    // Simulate route mapping
+    const routerReq = { method: 'GET', url: '/records', path: '/records', headers: {}, app: { locals: {} } };
+    const routerRes = {
+      statusCode: 200,
+      status(c) { this.statusCode = c; return this; },
+      json(data) {
+        const r1 = data.records.find(r => r.booking_id === 'TTLED_01');
+        const r2 = data.records.find(r => r.booking_id === 'KNOWN_02');
+        resolvedAgentSec = r1?.active_seconds;
+        resolvedUnknownSec = r2?.active_seconds;
+      }
+    };
+
+    ledgerRouter(routerReq, routerRes, () => {});
+
+    assert.strictEqual(resolvedAgentSec, 90, 'Agent-settled booking should calculate active seconds from events (90s)');
+    assert.strictEqual(resolvedUnknownSec, 'n/a', 'Truly unknown booking without events should remain n/a');
+  } finally {
+    store.resetStorePath();
+    try {
+      fs.rmSync(testTempDir, { recursive: true, force: true });
+    } catch (e) {}
+  }
+});

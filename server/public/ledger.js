@@ -313,7 +313,7 @@
       },
       {
         headerName: 'PayPal IDs',
-        width: 130,
+        width: 175,
         valueGetter: (params) => {
           const d = params.data;
           const cap = d?.capture_id ? 'Cap:' + d.capture_id : '';
