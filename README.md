@@ -1,16 +1,16 @@
 # UniServ Pay: Cooperative Service Marketplace with PayPal Sandbox & Autonomous AI Settlement
 
-UniServ Pay is an experimental extension of a cooperative home-services marketplace. It provides cross-border escrow pre-authorizations, deterministic financial settlement, split multi-receiver disbursements, autonomous AI settlement auditing, and an open, transparent treasury ledger.
+UniServ Pay is an experimental extension of a cooperative home-services marketplace. It provides cross-border authorization holds, deterministic financial settlement, split multi-receiver disbursements, autonomous AI settlement auditing, and an open treasury ledger.
 
-This prototype was developed for the PayPal Developer Challenge to address cross-border booking scenarios—specifically where an expatriate, immigrant, or family member living abroad arranges and pays for trusted home maintenance (electrical, plumbing, carpentry, cleaning) for relatives in India.
+This prototype was developed for the PayPal AI Hackathon to address cross-border booking scenarios—specifically where an expatriate, immigrant, or family member living abroad arranges and pays for trusted home maintenance (electrical, plumbing, carpentry, cleaning) for relatives in India.
 
 ---
 
 ## 1. The Problem & The Solution
 
-* **The Problem:** In conventional on-demand gig platforms, pricing and dispute resolutions are handled through closed, centralized black boxes. Artisans frequently experience delayed payouts and unexpected deductions, while buyers abroad arranging urgent repairs for family members lack transparent billing guarantees, fearing unauthorized extra charges or disputes across time zones.
+* **The Problem:** In conventional on-demand gig platforms, pricing and dispute resolutions are handled through closed, centralized systems. Some platforms offer limited visibility into how payments are split, while buyers abroad arranging urgent repairs for family members lack transparent billing guarantees, fearing unauthorized extra charges or disputes across time zones.
 * **The Solution:**
-  1. **Cross-Border Escrow Hold:** The foreign buyer pre-authorizes an estimated hold in USD via PayPal Sandbox with a transparent conversion rate.
+  1. **Cross-Border Authorization Hold:** The foreign buyer pre-authorizes an estimated hold in USD via PayPal Sandbox with a transparent conversion rate.
   2. **Server-Stamped Milestones:** Service progression (`start`, `pause_parts`, `extra_work`, `complete`) is recorded on the server with deterministic duration tracking.
   3. **Deterministic 4-Way Split:** Service fees are calculated strictly using integer mathematics:
      * **80%** directly to the artisan as a fair wage.
@@ -18,16 +18,16 @@ This prototype was developed for the PayPal Developer Challenge to address cross
      * **6%** to the cooperative emergency capital reserve fund.
      * **4%** retained for platform operations (before payment processing fees).
   4. **Autonomous AI Audit Agent:** An LLM agent audits completed jobs against policy anomaly rules, proposing capture and payouts while deterministic server guards enforce final amounts.
-  5. **Instant Split Disbursements:** Confirmed settlements trigger batched PayPal Payouts to distinct receiver accounts.
-  6. **Public Co-op Ledger:** Every transaction, fee breakdown, and agent audit trace is verifiable on a read-only AG Grid ledger.
+  5. **Automated Split Disbursements:** Confirmed settlements trigger batched PayPal Payouts to distinct receiver accounts.
+  6. **Public Co-op Ledger:** Every transaction, fee breakdown, and agent audit trace is auditable on a read-only AG Grid ledger.
 
 ---
 
 ## 2. Core Features Verified in This Repository
 
-* **Multimodal AI Job Triage:** Accepts a customer's textual symptom description and an uploaded job photo (JPEG/PNG), returning structured JSON triage (suggested trade, urgency tier, job difficulty, and dispatch summary).
+* **Multimodal AI Job Triage:** Accepts a customer's textual symptom description and an uploaded job photo (JPEG/PNG), returning structured JSON triage conforming strictly to the schema: `trade_id`, `urgency`, `likely_parts`, `price_range_inr`, `english_dispatch_summary`, `customer_language_summary`, `confidence`, and `safety_flag`.
 * **Pure Deterministic Settlement Engine:** Source of truth in integer INR paise and USD cents; mathematical invariants guarantee that itemized splits exactly equal the final bill with zero floating-point rounding drift.
-* **Guarded PayPal Pre-Authorization Hold:** Pre-authorizes an escrow hold for the estimated total plus a 25% contingency buffer via PayPal Orders v2 API.
+* **Guarded PayPal Pre-Authorization Hold:** Pre-authorizes an authorization hold for the estimated total plus a 25% contingency buffer via PayPal Orders v2 API.
 * **Server-Stamped Job Event State Machine:** Validates and logs sequential lifecycle events (`start`, `pause_parts`, `resume`, `extra_work`, `complete`), preventing client-side timer manipulation.
 * **Automated Multi-Receiver Payouts:** Disburses funds simultaneously to three separate PayPal receiver accounts (artisan, welfare fund, reserve fund) via PayPal Payouts v1 API.
 * **Autonomous Multi-Turn Settlement Agent:** Operates via Gemini function-calling with strict server-side policy guards, automated capture correction, and policy rule veto checks.
@@ -42,7 +42,7 @@ flowchart TD
     subgraph Client["Frontend Client (Expo / React Native Web)"]
         UI["Customer Web UI (Port 8081)"]
         Telemetry["Job Lifecycle Telemetry (start / complete)"]
-        LedgerBtn["Profile Screen -> View Co-op Ledger"]
+        LedgerBtn["Profile Screen -> View Co-op Treasury Ledger"]
     end
 
     subgraph Server["UniServ Backend Server (Express, Port 5000)"]
@@ -57,36 +57,40 @@ flowchart TD
     subgraph External["External APIs (Sandbox & AI)"]
         PayPalAuth["PayPal REST API v2\n(Orders / Authorize / Capture)"]
         PayPalPayout["PayPal REST API v1\n(Batched Split Payouts)"]
-        Gemini["Google Gemini API\n(gemini-3.5-flash-lite)"]
+        Gemini["Google Gemini API\n(gemini-2.5-flash / gemini-3.5-flash-lite)"]
     end
 
     subgraph LedgerView["Treasury Dashboard"]
         AGGrid["AG Grid Community Ledger\n(http://localhost:5000/ledger)"]
     end
 
-    UI -->|1. Triage Photo + Text| Gemini
-    UI -->|2. Create & Authorize Hold| Server
-    Server -->|Create Order & Auth| PayPalAuth
-    Telemetry -->|3. Timestamp Milestones| EventSM
-    EventSM -->|Record Events| Store
-    Server -->|4. Trigger Audit & Settlement| Agent
-    Agent <-->|Tool Calling Loop| Gemini
-    Agent -->|Evaluate Rules| Rules
-    Agent -->|Calculate Exact Bill| Engine
-    Agent -->|5. Guarded Capture| PayPalAuth
-    Agent -->|6. Multi-Receiver Split| PayPalPayout
-    Agent -->|Store Audit Trace & Receipt| Store
-    LedgerBtn -->|Open Dashboard| AGGrid
-    AGGrid -->|Read Sanitized Data| LedgerAPI
-    LedgerAPI -->|Read Records (Read-Only)| Store
+    UI -->|"1. Submit Triage Photo + Text"| Server
+    Server -->|"Forward Multimodal Triage Request"| Gemini
+    Gemini -->|"Validated Structured JSON"| Server
+    Server -->|"Return Triage Recommendation"| UI
+    UI -->|"2. Create & Authorize Hold"| Server
+    Server -->|"Create Order & Authorize"| PayPalAuth
+    Telemetry -->|"3. Timestamp Milestones"| EventSM
+    EventSM -->|"Record Stamped Events"| Store
+    Server -->|"4. Trigger Audit & Settlement"| Agent
+    Agent <-->|"Tool Calling Loop"| Gemini
+    Agent -->|"Evaluate Anomaly Rules"| Rules
+    Agent -->|"Calculate Exact Bill"| Engine
+    Agent -->|"5. Guarded Capture"| PayPalAuth
+    Agent -->|"6. Batched Split Payouts"| PayPalPayout
+    Agent -->|"Store Audit Trace & Receipt"| Store
+    LedgerBtn -->|"Open Dashboard"| AGGrid
+    AGGrid -->|"Read Sanitized Records"| LedgerAPI
+    LedgerAPI -->|"Read Records (Read-Only)"| Store
 ```
 
 ---
 
 ## 4. What Changed Since 1 Oct 2026
 
-The core UniServ mobile UI prototype existed prior to the PayPal Developer Challenge. All backend server infrastructure, deterministic settlement mathematics, PayPal sandbox integrations, Gemini AI agents, and treasury ledger modules were developed during the hackathon period starting 10 November 2026.
+The core UniServ mobile UI prototype existed prior to the PayPal AI Hackathon (submission period 1 Oct 2026 to 13 Nov 2026). All backend server infrastructure, deterministic settlement mathematics, PayPal sandbox integrations, Gemini AI agents, and treasury ledger modules were built between 10 and 12 November 2026, within the submission period.
 
+* **Initial Repository Baseline Commit:** `a5281e7` (Dated 2026-09-05: *Initial commit of UniServ Cooperative platform*).
 * **Pre-Hackathon Baseline Commit:** `c92d577` (Dated 2026-09-05: *Update overtime surcharge to ₹20, add >7km distance surcharge rule, and fix mobile OTP screen alignment*).
 
 ### Chronological Hackathon Commit Log (Real Git History)
@@ -122,6 +126,10 @@ The core UniServ mobile UI prototype existed prior to the PayPal Developer Chall
 #### Phase 6: Co-op Treasury Ledger (API & AG Grid Community)
 * `aee9a45` | 2026-11-11 | Phase 6.1: treasury ledger API and plain table
 * `fb2b404` | 2026-11-12 | Phase 6.2: AG Grid ledger
+* `4de4d4c` | 2026-11-12 | Phase 6.3: ledger polish
+
+#### Phase 7: Documentation, Third-Party Notices & Hygiene
+* `e17652e` | 2026-11-12 | Phase 7.1: README and notices
 
 #### Fixes, Polish & Cross-Platform Refinements
 * `13fa6d1` | 2026-11-10 | Fix initial splash duration and set OTPLogin as root entry
@@ -131,7 +139,6 @@ The core UniServ mobile UI prototype existed prior to the PayPal Developer Chall
 * `37edef0` | 2026-11-11 | Phase 2.2b: fix payment screen variable and per-user booking state
 * `72663da` | 2026-11-11 | Phase 2.2c: fix job event emission and surface errors
 * `519b71d` | 2026-11-11 | Phase 4.0b: Gemini smoke test diagnostics
-* `4de4d4c` | 2026-11-12 | Phase 6.3: ledger polish
 
 ---
 
@@ -140,15 +147,15 @@ The core UniServ mobile UI prototype existed prior to the PayPal Developer Chall
 | Component | Status | Operational Details |
 |---|---|---|
 | **PayPal Sandbox Orders** | **REAL** | Real HTTPS calls to `api-m.sandbox.paypal.com/v2/checkout/orders` creating orders with `intent: 'AUTHORIZE'`. |
-| **PayPal Pre-Auth Hold** | **REAL** | Real HTTPS calls to `/v2/checkout/orders/{id}/authorize` creating PayPal authorization entities held in sandbox escrow. |
+| **PayPal Pre-Auth Hold** | **REAL** | Real HTTPS calls to `/v2/checkout/orders/{id}/authorize` creating PayPal authorization entities held in sandbox. |
 | **PayPal Final Capture** | **REAL** | Real HTTPS calls to `/v2/payments/authorizations/{id}/capture` capturing exact final USD amounts. |
 | **PayPal Split Payouts** | **REAL** | Real HTTPS calls to `/v1/payments/payouts` disbursing simultaneous batch transfers to artisan, welfare, and reserve emails. |
-| **Gemini AI Triage** | **REAL** | Live API calls to `gemini-3.5-flash-lite` processing uploaded photos and text into validated JSON schemas. |
+| **Gemini AI Triage** | **REAL** | Live API calls to `gemini-2.5-flash` processing uploaded photos and text into validated JSON schemas. |
 | **Gemini Settlement Agent**| **REAL** | Live multi-turn tool calling loop evaluating evidence packets, executing guarded capture, and initiating payouts. |
 | **Job Event State Machine**| **REAL** | Server-timestamped sequential event logging (`start`, `pause_parts`, `resume`, `extra_work`, `complete`). |
 | **Co-op Treasury Ledger** | **REAL** | Read-only ledger populated strictly from active records in `server/data/bookings.json`. |
 | **OTP Verification** | **SIMULATED** | Checked client-side in the app demo flow. The server records event timestamps but does not verify SMS codes. |
-| **Map & Worker Tracking** | **SIMULATED** | Interactive Leaflet map renders real OpenStreetMap tiles, but artisan movement and GPS telemetry are simulated. |
+| **Map & Worker Tracking** | **SIMULATED** | Interactive Leaflet map renders real map tiles, but artisan movement and GPS telemetry are simulated. |
 | **Artisan Registry** | **SIMULATED** | Pre-seeded mock JSON database (`src/data/workers.json`, `src/data/services.json`). |
 | **INR to USD Exchange Rate**| **SIMULATED** | Fixed demo constant (`SANDBOX_DEMO_EXCHANGE_RATE_INR_TO_USD = 1 / 85`). Customer UI displays Indian Rupees (₹), while PayPal orders and ledger figures are strictly USD ($). |
 | **Warranty Refunds** | **NOT WIRED** | Dispute guarantee policies are displayed for UI transparency; automated refund webhooks are not implemented. |
@@ -157,10 +164,20 @@ The core UniServ mobile UI prototype existed prior to the PayPal Developer Chall
 
 ---
 
-## 6. Setup and Run Guide
+## 6. Testing Access & Credentials
+
+* **Sandbox Credentials:** Sandbox buyer login credentials for judging and evaluation are provided directly in the Devpost submission's testing credentials field (not published in this public repository).
+* **Simulated Mode:** If running without external credentials, the entire application still functions end-to-end in `SIMULATED` mode:
+  * PayPal orders return mock sandbox IDs and simulated authorization holds.
+  * Gemini triage returns valid mock JSON clearly badged with `[SIMULATED AI RESPONSE]`.
+  * The settlement agent operates in deterministic `RULES_ONLY` mode.
+
+---
+
+## 7. Setup and Run Guide
 
 ### Prerequisites
-* **Node.js**: v18.x or v20.x installed.
+* **Node.js**: Node.js 20 or newer (developed and tested on Node 24).
 * **Operating System**: Windows (PowerShell / Command Prompt), macOS, or Linux.
 * **Ports Available**: `5000` (API Server) and `8081` (Expo Web Client).
 
@@ -172,7 +189,7 @@ cd /d server
 cmd /c npm install
 cd /d ..
 ```
-*(On macOS/Linux, simply run `npm install` and `cd server && npm install`)*.
+*(On macOS/Linux, run `npm install && cd server && npm install && cd ..`)*.
 
 ### Step 2: Configure Environment Variables
 Copy the template file to create `server/.env`:
@@ -193,19 +210,19 @@ PAYPAL_CLIENT_SECRET=your_paypal_sandbox_client_secret
 # Origin URL for PayPal redirect return
 CLIENT_RETURN_URL=http://localhost:8081
 
-# Receiver Emails for Automated Split Payouts (Must be distinct Sandbox accounts)
-PAYPAL_RECEIVER_ARTISAN_EMAIL=artisan_sandbox@uniserv.org
-PAYPAL_RECEIVER_WELFARE_EMAIL=welfare_sandbox@uniserv.org
-PAYPAL_RECEIVER_RESERVE_EMAIL=reserve_sandbox@uniserv.org
+# Payout Receiver Accounts (Sandbox personal or business accounts)
+PAYPAL_RECEIVER_ARTISAN_EMAIL=artisan@example.com
+PAYPAL_RECEIVER_WELFARE_EMAIL=welfare@example.com
+PAYPAL_RECEIVER_RESERVE_EMAIL=reserve@example.com
 
 # Google Gemini API Configuration
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_MODEL=gemini-2.5-flash
 
-# Settlement Engine Configuration
-MIN_HOLD_CENTS=100
-DEMO_MODE=true
-DEMO_TIME_SCALE=60
+# Optional demo-only settings (do not use for real runs)
+# DEMO_TIME_SCALE=60      # Multiplies active seconds for rapid duration testing
+# MIN_HOLD_CENTS=100      # Sets a minimum authorization hold ceiling in USD cents
+# DEMO_MODE=true          # Activates demo mode overrides
 ```
 > [!IMPORTANT]
 > Any edits to `server/.env` require restarting the API server process to take effect. Never commit real keys or sandbox passwords to version control.
@@ -228,23 +245,25 @@ DEMO_TIME_SCALE=60
 ### Step 4: Run the Automated Test Suite
 From the repository root:
 ```cmd
-npm test
+cmd /c npm test
 ```
-Executes all 82 unit, regression, and integration tests with zero network dependencies.
+Executes the full automated suite, `npm test`, covering unit, regression, and integration tests with zero network dependencies.
 
 ### Step 5: Open the Co-op Treasury Ledger
 Navigate to `http://localhost:5000/ledger` in any browser to inspect transaction records, financial breakdown KPIs, and agent audit traces.
 
 ---
 
-## 7. Gemini API & PayPal Sandbox Notes
+## 8. Gemini API & PayPal Sandbox Notes
 
-### Gemini Model Selection
-* **Recommended Model:** `gemini-3.5-flash-lite`.
-* **Investigation Findings:**
-  1. `thinkingBudget: 0` is rejected with HTTP 400 (`INVALID_ARGUMENT`) on current Gemini Flash models.
-  2. `gemini-3.8-flash` experienced high-demand 503 errors and 60-second timeouts during testing.
-  3. `gemini-3.5-flash-lite` with no `thinkingConfig` executes structured JSON outputs and multimodal requests consistently in under 2 seconds.
+### Gemini Model Selection & Observed Latencies
+* **Recommended Model:** `gemini-2.5-flash` (or `gemini-3.5-flash-lite`).
+* **Measured Performance & Latency:**
+  * In our testing, `gemini-2.5-flash` achieved typical response latencies of 1 to 4 seconds for multimodal triage, and 5 to 30 seconds for complete multi-turn settlement agent loops.
+* **Findings from Testing:**
+  1. `thinkingBudget: 0` is rejected with HTTP 400 (`INVALID_ARGUMENT`) on `gemini-3.5-flash-lite`.
+  2. `gemini-3.8-flash` timed out or returned HTTP 503 errors during testing under high load.
+  3. `gemini-2.5-flash` without `thinkingConfig` executed structured JSON triage and multi-turn tool calling reliably.
 
 ### PayPal Developer Account Setup
 1. Log in to the [PayPal Developer Dashboard](https://developer.paypal.com/).
@@ -258,43 +277,70 @@ Navigate to `http://localhost:5000/ledger` in any browser to inspect transaction
 
 ---
 
-## 8. Judge Quick-Start (5-Minute Evaluation)
+## 9. Judge Quick-Start (5-Minute Evaluation)
 
-1. Start the server and client as described in Section 6.
-2. In the browser (`http://localhost:8081`), select your language (e.g., English), proceed through OTP login, and select **Electrician** on the Home screen.
-3. Enter job symptoms and attach a photo (e.g. electrical wiring). Tap **Analyze with AI** to view real-time Gemini trade triage.
-4. Tap **Confirm & Continue** and choose **Book with Escrow Hold (PayPal)**.
-5. You will be redirected to PayPal Sandbox checkout. Log in with your Sandbox Buyer account and approve the authorization.
-6. The app returns with a confirmed authorization hold. Advance the job milestones:
-   * Start Job -> (Optional) Add Extra Work note -> Complete Job.
-7. Upon job completion, tap **Audit & Settle Job**. The autonomous Gemini Settlement Agent will inspect the evidence, execute the capture, and disburse split payouts.
-8. Open the Profile screen and tap **View Co-op Treasury Ledger** (or visit `http://localhost:5000/ledger`) to audit the settled transaction in AG Grid and export the CSV report.
+Follow these exact steps using the application UI:
 
-> [!NOTE]
-> **Testing Without Credentials:** If no API keys are provided in `server/.env`, the system automatically runs in `SIMULATED` mode, labeling all PayPal actions and AI triage responses clearly as simulated without crashing.
+1. **Quick Login:**
+   Open `http://localhost:8081` in your browser. On the login screen, click **"Quick Demo Login (Priya Sharma)"**.
+2. **Service Selection:**
+   On the Home screen, select **"Plumber"** (recommended for evaluation as it features realistic pricing and extra-work catalog options).
+3. **AI Smart Triage:**
+   Enter a brief issue description (e.g., "Leaking kitchen sink pipe under high pressure") or attach an image. Tap the **"AI Smart Triage"** button to view the structured Gemini triage recommendation.
+4. **Payer Selection:**
+   In the booking form payment options, select **"Pay from abroad via PayPal sandbox (USD)"**.
+5. **Review & Authorize Hold:**
+   Advance to the review screen and tap **"Authorize with PayPal Sandbox • $X.XX USD"**. You will be redirected to PayPal Sandbox checkout. Log in with the Sandbox Buyer account (from Devpost testing credentials) and approve the authorization hold.
+6. **Job Progression & Active Duration:**
+   Upon redirect back to the app, the booking displays an active authorization hold. Tap to start the job with the Start OTP.
+   > [!TIP]
+   > Advise waiting **30+ seconds** between Start OTP and Completion OTP so the recorded active service duration is realistic (by default `DEMO_TIME_SCALE` is 1; if set to 60 it scales up, but waiting 30+ seconds records realistic duration in real time).
+   Optionally, add a standard extra work item from the catalog, then complete the job with the Completion OTP.
+7. **Settlement Screen:**
+   On the final settlement screen, tap **"Settle Final Bill • $X.XX USD"**. The autonomous Gemini Settlement Agent audits the job evidence packet, verifies anomaly rules, executes the guarded capture against the authorization hold, and triggers the batched split payouts. The UI displays an audit progress card and renders the step-by-step audit trace upon completion.
+8. **View Treasury Ledger:**
+   Open the Profile screen and tap **"View Co-op Treasury Ledger"** (or visit `http://localhost:5000/ledger` directly) to audit the settled transaction in AG Grid, inspect the audit drawer, and export CSV reports.
+
+### Try the HOLD Scenario
+To test policy guard veto enforcement:
+1. Start a new booking for **Plumber** and authorize the hold.
+2. During the job, add a large extra work item or multiple extra items such that extra work exceeds 100% of the base service bill (`RULE_EXCESSIVE_EXTRAS`) or the total exceeds the ceiling (`RULE_CEILING_EXCEEDED`).
+3. Complete the job and tap **"Settle Final Bill • $X.XX USD"**.
+4. **Observed Outcome:**
+   * The settlement agent detects the policy rule violation.
+   * The UI displays `HOLD FOR HUMAN` status with an explanation card.
+   * The payout tool is **not** offered, and $0.00 is captured.
+   * In the Co-op Treasury Ledger, the booking is listed with decision **`HELD`**, and total paid out is **`$0.00`**.
 
 ---
 
-## 9. How the AI Settlement Agent Stays Safe
+## 10. How the AI Settlement Agent Stays Safe
 
-The settlement agent uses a strict defense-in-depth model where the LLM is treated as an untrusted decision aid:
+The settlement agent uses a defense-in-depth model where the LLM is treated as an untrusted decision aid:
 
 1. **Server Decides; Model Only Proposes:** The LLM cannot directly modify database state or initiate HTTP calls. It can only call declared tools (`capture_payment`, `run_payouts`, `hold_for_review`).
-2. **Amounts Sourced Exclusively from Server:** The model is not allowed to compute or invent billing amounts. Capture amounts must equal `engine_total_usd_cents` computed by the deterministic engine; any altered amount is rejected by the server guard.
-3. **Dual-Severity Anomaly Rules:** Deterministic rules evaluate evidence before the model speaks:
-   * **High Flags** (e.g. `RULE_CEILING_EXCEEDED`, `RULE_EXCESSIVE_EXTRAS`): Instantly veto any model approval and force `HOLD_FOR_HUMAN`.
-   * **Low Flags** (e.g. `RULE_URGENCY_MISMATCH`, `RULE_ZERO_DURATION`): Advisory; logged in the audit trace.
-4. **Untrusted Data Quarantine:** Customer descriptions and artisan notes are quarantined inside an `untrusted_data` JSON field with explicit prompt instructions forbidding instruction-following inside it.
+2. **Amounts Sourced Exclusively from Server:** The model is not allowed to compute or invent billing amounts. Capture amounts must equal `engine_total_usd_cents` computed by the deterministic engine; any altered amount is rejected by the server guard with an error message instructing the model to use `engine_total_usd_cents`.
+3. **Deterministic Anomaly Rules (Dual-Severity):** Deterministic rules evaluate evidence before the model speaks:
+   * `RULE_CEILING_EXCEEDED` (**HIGH**): Triggered when the final bill exceeds the pre-authorized ceiling.
+   * `RULE_EXCESSIVE_EXTRAS` (**HIGH**): Triggered when extra work plus parts exceed 100% of the base service bill.
+   * `RULE_SUSPICIOUS_FAST_EXTRAS` (**HIGH**): Triggered when active service duration is below 20s while billing extra work or parts.
+   * `RULE_NON_POSITIVE_DURATION` (**LOW**): Triggered when recorded elapsed duration is zero or negative (treated safely as 0s).
+   * `RULE_MANY_EXTRA_WORK_EVENTS` (**LOW**): Advisory flag when extra work events exceed 3.
+   * `RULE_EXCESSIVE_PAUSED_TIME` (**LOW**): Advisory flag when paused parts time exceeds 50% of total elapsed time.
+   * `RULE_URGENCY_MISMATCH` (**LOW**): Advisory flag when booking type disagrees with AI triage urgency.
+   * *Policy Decision Invariant:* Any **HIGH** severity flag deterministically vetoes model approval and forces `HOLD_FOR_HUMAN`.
+4. **Untrusted Data Quarantine:** Customer descriptions and artisan notes are quarantined inside an `untrusted_data` JSON field with explicit system prompt instructions forbidding instruction-following inside it.
 5. **Guard Rejection Limits:** If the model attempts an invalid action twice, the server terminates execution and locks the booking in `HOLD_FOR_HUMAN` (`AGENT_GUARD_FAILURE`).
 6. **Concurrency Locks:** Atomic in-progress states (`IN_PROGRESS`) prevent duplicate or concurrent agent executions.
 
 ---
 
-## 10. Tools Used & Credits
+## 11. Tools Used & Credits
 
-* **Antigravity (Google DeepMind):** Agentic AI assistant used for engineering, architecture design, test authoring, and documentation.
+* **Google Antigravity:** Agentic AI assistant used for engineering, architecture design, test authoring, and documentation.
 * **PayPal REST APIs:** Orders v2 (Authorize & Capture), Payouts v1 (Batched split disbursements).
-* **Google Gemini API:** `gemini-3.5-flash-lite` for multimodal triage and autonomous multi-turn tool calling.
+* **Google Gemini API:** `gemini-2.5-flash` / `gemini-3.5-flash-lite` for multimodal triage and autonomous multi-turn tool calling.
 * **AG Grid Community:** High-performance, client-side data grid under MIT License.
 * **Expo & React Native for Web:** Cross-platform web and mobile frontend application framework.
 * **Node.js & Express:** Backend API server hosting the deterministic calculation engine and atomic store.
+* * The project plan and code review were also assisted by Claude (Anthropic). [CONFIRM]

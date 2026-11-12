@@ -70,21 +70,28 @@ SOFTWARE.
 
 ---
 
-## 4. Map Engine, Routing & Tile Services
+## 4. Map Tiles, Routing & Geospatial Services
 
-* **Leaflet (`1.9.4`)**:
-  * **License:** BSD-2-Clause
-  * **Copyright:** (c) 2010-2023, Vladimir Agafonkin; (c) 2010-2011, CloudMade.
-* **OpenStreetMap**:
-  * **Data License:** Open Data Commons Open Database License (ODbL) 1.0.
-  * **Attribution:** (c) OpenStreetMap contributors (https://www.openstreetmap.org/copyright).
-* **CartoDB Voyager Tiles**:
-  * **License:** Creative Commons Attribution (CC BY 4.0).
-  * **Attribution:** Map tiles (c) CARTO; Data (c) OpenStreetMap contributors.
-* **Esri World Imagery**:
-  * **Attribution:** (c) Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community.
-* **Project OSRM (router.project-osrm.org)**:
-  * **License:** BSD-2-Clause (Project OSRM contributors).
+The application embed (`src/components/RealLiveTrackingMap.js`) uses Leaflet and public web map endpoints. Attribution is rendered in the map UI control:
+
+1. **Leaflet (`1.9.4`)**:
+   * **License:** BSD-2-Clause
+   * **Copyright:** (c) 2010-2023, Vladimir Agafonkin; (c) 2010-2011, CloudMade.
+   * **UI Display:** Embedded map rendering engine.
+
+2. **CartoDB Voyager Road Tiles**:
+   * **Endpoint:** `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png`
+   * **Attribution:** Rendered as `© OpenStreetMap & CartoDB` in the map control.
+   * **License / Terms:** Creative Commons Attribution (CC BY 4.0) with OpenStreetMap data under Open Database License (ODbL 1.0).
+
+3. **Esri World Imagery (Satellite Layer Toggle)**:
+   * **Endpoint:** `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`
+   * **Attribution:** Rendered as `© Esri & NASA` in the map control.
+   * **Terms:** Permitted for non-commercial web map display with attribution.
+
+4. **Project OSRM Public Routing API**:
+   * **Endpoint:** `https://router.project-osrm.org/route/v1/driving/...`
+   * **License:** BSD-2-Clause (OSRM project). Free public demo service used for demo route geometries.
 
 ---
 
@@ -92,7 +99,7 @@ SOFTWARE.
 
 * **Unsplash Stock Photos (used in mock cooperative profiles and sample extra-work attachments)**:
   * **License:** Unsplash License (https://unsplash.com/license).
-  * **Terms:** Free commercial and non-commercial use, no permission or attribution required.
+  * **Terms:** Free commercial and non-commercial use, no permission required.
 * **Ionicons (`@expo/vector-icons/Ionicons`)**:
   * **License:** MIT License.
   * **Copyright:** (c) 2015-present Ionic (https://ionic.io/).
